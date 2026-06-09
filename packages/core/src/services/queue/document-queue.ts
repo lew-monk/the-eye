@@ -1,0 +1,136 @@
+import { Queue, Worker, QueueEvents } from 'bullmq'
+import { BullMQClient } from '@workspace/shared'
+import { documentRepository } from '@workspace/shared'
+import { DocumentProcessor } from '../ocr'
+import { QueueProcessingOptions, DocumentJobData, CoreferenceJobData } from './types'
+import { createHash } from 'crypto'
+
+export class DocumentQueue {
+	private queue: Queue<DocumentJobData>
+	private worker: Worker<DocumentJobData>
+	private events: QueueEvents
+	private processor: DocumentProcessor
+	private client: BullMQClient
+	private corefQueue: Queue<CoreferenceJobData>
+
+	constructor() {
+		this.client = new BullMQClient()
+		this.processor = new DocumentProcessor()
+
+		const connection = this.client.getConnection()
+
+		this.queue = new Queue('document-processing', { connection })
+		this.corefQueue = new Queue('coreference-resolution', { connection })
+		this.worker = new Worker('document-processing', this.processDocument.bind(this), { connection })
+		this.events = new QueueEvents('document-processing', { connection })
+
+		this.setupEventHandlers()
+	}
+
+	async addDocument(documentId: number, fileBuffer: Buffer, options: QueueProcessingOptions): Promise<void> {
+		await this.queue.add('process-document', {
+			documentId,
+			fileBuffer: fileBuffer.toString('base64'),
+			options,
+		})
+
+		// Log the queuing action
+		await documentRepository.addProcessingLog({
+			documentId,
+			action: 'queued',
+			details: { options },
+		})
+	}
+
+	private async processDocument(job: any): Promise<void> {
+		const { documentId, fileBuffer, options } = job.data
+
+		try {
+			// Update status to processing
+			await documentRepository.updateById(documentId, { status: 'processing' })
+
+			// Log processing start
+			await documentRepository.addProcessingLog({
+				documentId,
+				action: 'processing_started',
+				details: { model: options.customModelId },
+			})
+
+			// Decode file buffer
+			const buffer = Buffer.from(fileBuffer, 'base64')
+
+			// Process document
+			const result = await this.processor.processDocument(buffer, { ...options, documentId })
+
+			// Update document with results
+			await documentRepository.updateById(documentId, {
+				status: 'completed',
+				processedAt: new Date(),
+				structuredData: result.structured,
+				fullContent: { content: result.content },
+				confidence: result.confidence,
+			})
+
+			const textHash = createHash('sha256').update(result.content || '').digest('hex')
+			await (documentRepository as any).updateById(documentId, { textHash })
+
+			const corefDedup = {
+				id: `${documentId}:${textHash}`,
+				ttl: 3600000,
+			}
+			await this.corefQueue.add('resolve-coreference', {
+				documentId,
+				textHash,
+				modelVersion: process.env.COREF_MODEL_VERSION || 'spacy-neuralcoref',
+			}, {
+				attempts: 3,
+				backoff: { type: 'exponential', delay: 5000 },
+				deduplication: corefDedup as any,
+			})
+
+			// Log successful completion
+			await documentRepository.addProcessingLog({
+				documentId,
+				action: 'processing_completed',
+				details: {
+					confidence: result.confidence,
+					processingTime: result.metadata.processingTime,
+				},
+			})
+
+		} catch (error: any) {
+			// Update status to failed
+			await documentRepository.updateById(documentId, {
+				status: 'failed',
+				errorMessage: error.message,
+			})
+
+			// Log error
+			await documentRepository.addProcessingLog({
+				documentId,
+				action: 'processing_failed',
+				details: { error: error.message },
+			})
+
+			throw error
+		}
+	}
+
+	private setupEventHandlers(): void {
+		this.events.on('completed', async ({ jobId, returnvalue }) => {
+			console.log(`Job ${jobId} completed successfully`)
+		})
+
+		this.events.on('failed', async ({ jobId, failedReason }) => {
+			console.error(`Job ${jobId} failed: ${failedReason}`)
+		})
+	}
+
+	async close(): Promise<void> {
+		await this.worker.close()
+		await this.queue.close()
+		await this.corefQueue.close()
+		await this.events.close()
+		await this.client.close()
+	}
+}

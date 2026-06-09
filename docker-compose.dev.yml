@@ -1,0 +1,120 @@
+version: "3.8"
+
+services:
+  # Infrastructure
+  postgres:
+    restart: always
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: legal_docs
+      POSTGRES_USER: legal_user
+      POSTGRES_PASSWORD: legal_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U legal_user -d legal_docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - the-eye-network
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - the-eye-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: always
+    env_file:
+      - ./.env
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - the-eye-network
+
+  # Development services with hot reload
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: web-dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/web/node_modules
+      - /app/packages/*/node_modules
+      - /app/packages/*/dist
+    depends_on:
+      - api
+    working_dir: /app
+    networks:
+      - the-eye-network
+    command: sh -c "cd apps/web && bun run dev --host 0.0.0.0"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: api-dev
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./.env
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/api/node_modules
+      # - /app/packages/shared/node_modules
+      # - /app/packages/core/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    working_dir: /app
+    networks:
+      - the-eye-network
+    command: sh -c "bun run watch:packages & cd apps/api && bun run dev"
+
+  # coreference-worker:
+  #   build:
+  #     context: ./packages/coreference-worker
+  #     dockerfile: Dockerfile.dev
+  #   environment:
+  #     - REDIS_URL=redis://redis:6379
+  #     - API_BASE_URL=http://api:3001
+  #     - COREF_SERVICE_TOKEN=${COREF_SERVICE_TOKEN}
+  #     - COREF_MODEL_VERSION=spacy-neuralcoref
+  #     - COREF_MAX_CHARS=200000
+  #   depends_on:
+  #     redis:
+  #       condition: service_healthy
+  #     api:
+  #       condition: service_started
+  #   networks:
+  #     - the-eye-network
+
+volumes:
+  postgres_data:
+
+networks:
+  the-eye-network:
+    driver: bridge

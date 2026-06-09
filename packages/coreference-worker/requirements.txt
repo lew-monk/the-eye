@@ -1,0 +1,5 @@
+bullmq==2.19.4
+spacy==3.7.4
+neuralcoref==4.0.0
+requests==2.32.3
+en-core-web-sm==3.7.1
