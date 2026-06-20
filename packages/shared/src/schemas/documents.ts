@@ -1,5 +1,4 @@
 import { pgTable, text, integer, jsonb, timestamp, serial, real, index } from 'drizzle-orm/pg-core'
-import { relations } from 'drizzle-orm'
 
 export const documents = pgTable('documents', {
 	id: serial('id').primaryKey(),
@@ -26,6 +25,12 @@ export const documents = pgTable('documents', {
 	// Status
 	status: text('status').default('pending').notNull(),
 	errorMessage: text('error_message'),
+
+	// Paralegal version tracking
+	extractionVersion: integer('extraction_version').default(1),
+	embeddingVersion: integer('embedding_version').default(1),
+	embeddingProvider: text('embedding_provider'),
+	embeddingModel: text('embedding_model'),
 }, (table) => ({
 	statusIdx: index('documents_status_idx').on(table.status),
 	documentTypeIdx: index('documents_type_idx').on(table.documentType),
@@ -41,18 +46,6 @@ export const processingLogs = pgTable('processing_logs', {
 	action: text('action').notNull(),
 	details: jsonb('details'),
 })
-
-// Relations
-export const documentsRelations = relations(documents, ({ many }) => ({
-	logs: many(processingLogs),
-}))
-
-export const processingLogsRelations = relations(processingLogs, ({ one }) => ({
-	document: one(documents, {
-		fields: [processingLogs.documentId],
-		references: [documents.id],
-	}),
-}))
 
 // Types
 export type Document = typeof documents.$inferSelect

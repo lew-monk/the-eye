@@ -42,7 +42,8 @@ def fetch_extracted_text(document_id: int) -> Dict[str, Any]:
 
 def post_coref_result(document_id: int, payload: Dict[str, Any]) -> None:
     url = f"{API_BASE_URL}/internal/documents/{document_id}/coreference"
-    response = requests.post(url, headers=_headers(), data=json.dumps(payload), timeout=30)
+    response = requests.post(url, headers=_headers(),
+                             data=json.dumps(payload), timeout=30)
     response.raise_for_status()
 
 
@@ -50,7 +51,7 @@ def chunk_text(text: str, max_chars: int) -> Dict[str, Any]:
     if len(text) <= max_chars:
         return {"chunks": [text], "chunked": False}
 
-    chunks = [text[i : i + max_chars] for i in range(0, len(text), max_chars)]
+    chunks = [text[i: i + max_chars] for i in range(0, len(text), max_chars)]
     return {"chunks": chunks, "chunked": True}
 
 

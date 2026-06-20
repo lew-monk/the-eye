@@ -1,0 +1,607 @@
+# Legal role detection patterns for participant extraction.
+# Multi-jurisdiction support. Patterns are matched against the canonical
+# entity name extracted from coreference clusters.
+#
+# Edit this file to add new roles or jurisdictions.
+# Bump version AND file_hash when you do.
+
+version: 1
+file_hash: ""
+
+roles:
+  # ============================================================================
+  # JUDGE
+  # ============================================================================
+  - role: judge
+    jurisdictions: [all]
+    patterns:
+      - "^(Judge|Hon\\.?\\s+Justice|Justice|His Lordship|Her Ladyship|Your Lordship|Your Ladyship)\\s+"
+      - "^(Lady Justice|Lord Justice|The Honourable|The Hon\\.?)\\s+"
+      - "(Chief Justice|Presiding Judge|Senior Judge|Administrative Judge)"
+    weight: 0.4
+    ner_hint: PERSON
+
+  - role: judge
+    jurisdictions: [ke, tz, ug, ng, gh, zm, za]
+    patterns:
+      - "^(Justice|Judge)\\s+\\w+\\s+of\\s+(the\\s+)?(High Court|Court of Appeal|Supreme Court)"
+      - "(JA|Justice of Appeal)"
+      - "^(J\\.|J)\\s+\\w+" # Kenyan shorthand
+      - "(Principal Judge|Deputy Chief Justice|DCJ)"
+    weight: 0.4
+    ner_hint: PERSON
+
+  - role: judge
+    jurisdictions: [uk]
+    patterns:
+      - "^(Master\\s+of\\s+the\\s+Rolls|Lord Chief Justice|Master of the Rolls|President of the (Queen's|King's) Bench)"
+      - "^(Lord|Lady)\\s+(Justice|Chief Justice|Judge)"
+      - "(High Court Judge|Circuit Judge|Recorder|District Judge|Magistrates' Judge)"
+      - "^(Master\\s+)\\w+"
+    weight: 0.4
+    ner_hint: PERSON
+
+  - role: judge
+    jurisdictions: [us]
+    patterns:
+      - "^(Chief Justice|Associate Justice|Circuit Judge|District Judge|Magistrate Judge)"
+      - "^Judge\\s+\\w+"
+      - "^(Justice)\\s+\\w+" # Supreme Court justices
+      - "(Senior Judge|Bankruptcy Judge|Chief Judge|Presiding Judge)"
+    weight: 0.4
+    ner_hint: PERSON
+
+  - role: judge
+    jurisdictions: [in]
+    patterns:
+      - "^(Chief Justice|Justice|Judge)\\s+"
+      - "(Supreme Court Judge|High Court Judge)"
+    weight: 0.4
+    ner_hint: PERSON
+
+  - role: judge
+    jurisdictions: [ca]
+    patterns:
+      - "^(Chief Justice|Justice|Judge)\\s+"
+      - "(Federal Court Judge|Tax Court Judge|Supreme Court Justice)"
+      - "^(Madam Justice|Mme\\s+Justice|Mme\\s+la\\s+Juge)"
+    weight: 0.4
+    ner_hint: PERSON
+
+  # ============================================================================
+  # MAGISTRATE
+  # ============================================================================
+  - role: magistrate
+    jurisdictions: [all]
+    patterns:
+      - "^(Magistrate|RM|SRM|Chief Magistrate|Principal Magistrate|Senior Magistrate)"
+      - "^(Resident Magistrate|District Magistrate|Metropolitan Magistrate)"
+      - "(Magistrate\\s+\\w+|Magistrate\\s+Grade)"
+      - "(Judicial Magistrate|Executive Magistrate)"
+    weight: 0.35
+    ner_hint: PERSON
+
+  # ============================================================================
+  # LAWYER / ADVOCATE
+  # ============================================================================
+  - role: lawyer
+    jurisdictions: [all]
+    patterns:
+      - "(Advocate|Barrister|Solicitor|Attorney|Counsel\\s+for|Counsel\\s+to)"
+      - "(LLB|LLM|LLD|&\\s+Co\\.|&\\s+Associates|Chambers|LLP|Law\\s+Firm|Law\\s+Offices)"
+      - "(Legal\\s+Counsel|General\\s+Counsel|Chief\\s+Legal\\s+Officer)"
+      - "(Of\\s+Counsel|Pro\\s+Se|Pro\\s+Bono)"
+    weight: 0.3
+    ner_hint: PERSON
+
+  - role: lawyer
+    jurisdictions: [ke, tz, ug, ng, gh, zm]
+    patterns:
+      - "^(Adv\\s+|Advocate\\s+|M/s\\.?\\s+|M/s\\s+[A-Z])"
+      - "(&\\s+Co\\.\\s+Advocate|&\\s+Associates\\s+Advocate|\\s+Advocates)"
+      - "^(State\\s+Counsel|Senior\\s+State\\s+Counsel)"
+      - "(SC|Senior Counsel)"
+    weight: 0.3
+    ner_hint: PERSON
+
+  - role: lawyer
+    jurisdictions: [uk]
+    patterns:
+      - "^(Barrister|QC|KC|Queen's Counsel|King's Counsel|Solicitor)"
+      - "(\\s+QC\\b|\\s+KC\\b)"
+      - "(Inns of Court|Lincoln's Inn|Middle Temple|Inner Temple|Gray's Inn)"
+    weight: 0.3
+    ner_hint: PERSON
+
+  - role: lawyer
+    jurisdictions: [us]
+    patterns:
+      - "^(Attorney|Atty|Esq\\.?|Esquire|Counselor)"
+      - "(\\s+Esq\\.?|\\s+Esquire|\\s+P\\.?A\\.?|\\s+P\\.?C\\.?|\\s+Prof\\.?\\s+Corp\\.?)"
+      - "(Law\\s+Offices\\s+of|Law\\s+Practice|Legal\\s+Aid\\s+Society)"
+      - "(Public\\s+Defender|Assistant\\s+Public\\s+Defender|APD)"
+      - "(Federal\\s+Public\\s+Defender)"
+    weight: 0.3
+    ner_hint: PERSON
+
+  - role: lawyer
+    jurisdictions: [ng]
+    patterns:
+      - "^(SAN|Senior Advocate of Nigeria)"
+      - "(&\\s+Co\\.|&\\s+Solicitors|Legal\\s+Practitioner)"
+    weight: 0.3
+    ner_hint: PERSON
+
+  - role: lawyer
+    jurisdictions: [in]
+    patterns:
+      - "^(Advocate|Senior Advocate|SA|Solicitor)"
+      - "(&\\s+Associates|Law\\s+Chambers|&\\s+Co\\.)"
+    weight: 0.3
+    ner_hint: PERSON
+
+  - role: lawyer
+    jurisdictions: [ca]
+    patterns:
+      - "^(Barrister|Solicitor|Attorney|Avocat|Avocate)"
+      - "(LL\\.?B\\.?|LL\\.?L\\.?|BCL|\\s+QC|\\s+c\\.?r\\.?)"
+      - "(Law\\s+Corporation|Professional\\s+Corporation)"
+    weight: 0.3
+    ner_hint: PERSON
+
+  # ============================================================================
+  # POLICE OFFICER
+  # ============================================================================
+  - role: police_officer
+    jurisdictions: [all]
+    patterns:
+      - "(Police\\s+Officer|Law\\s+Enforcement\\s+Officer|LEO)"
+      - "^(Inspector|Chief\\s+Inspector|Superintendent|Assistant\\s+Superintendent)"
+      - "^(Sergeant|Corporal|Constable|Patrolman|Patrolwoman|Trooper)"
+      - "^(Captain|Lieutenant|Deputy\\s+Chief|Commander|Major)"
+    weight: 0.3
+    ner_hint: PERSON
+
+  - role: police_officer
+    jurisdictions: [ke, tz, ug]
+    patterns:
+      - "(IP|OCS|OCPD|DCIO|PPU|OC\\s+)"
+      - "(ASP|SP|SSP|CP|DCP|AGCP|IGP|DIGP|NP|PC)\\s+\\w+"
+      - "^(Chief\\s+Inspector|Senior\\s+Superintendent|Commissioner\\s+of\\s+Police)"
+      - "(Director\\s+of\\s+Criminal\\s+Investigations|DCI)"
+    weight: 0.3
+    ner_hint: PERSON
+
+  - role: police_officer
+    jurisdictions: [uk]
+    patterns:
+      - "(PC|WPC|PS|Inspector|Chief\\s+Inspector)\\s+\\w+"
+      - "^(Detective\\s+(Constable|Sergeant|Inspector|Chief\\s+Inspector|Superintendent))"
+      - "^(Police\\s+Constable|Woman\\s+Police\\s+Constable|Police\\s+Sergeant)"
+      - "(Assistant\\s+Commissioner|Deputy\\s+Assistant\\s+Commissioner|Commissioner\\s+of\\s+Police)"
+    weight: 0.3
+    ner_hint: PERSON
+
+  - role: police_officer
+    jurisdictions: [us]
+    patterns:
+      - "^(Officer|Deputy|Sheriff|Undersheriff|Marshal|Deputy\\s+Marshal)"
+      - "^(Special\\s+Agent|SA|Senior\\s+Special\\s+Agent|SSA)"
+      - "^(Detective|Det\\.?|Investigator|Agent|Federal\\s+Agent)"
+      - "^(Chief\\s+of\\s+Police|Police\\s+Chief|Chief\\s+of\\s+Department)"
+      - "^(State\\s+Trooper|Highway\\s+Patrol|Corporal|Master\\s+Patrolman)"
+    weight: 0.3
+    ner_hint: PERSON
+
+  - role: police_officer
+    jurisdictions: [ng]
+    patterns:
+      - "(ASP|SP|CSP|ACP|DCP|CP|AGCP|IGP)\\s+\\w+"
+      - "^(Inspector|Chief\\s+Inspector|Superintendent|Assistant\\s+Superintendent)"
+    weight: 0.3
+    ner_hint: PERSON
+
+  - role: police_officer
+    jurisdictions: [in]
+    patterns:
+      - "(IPS|DGP|ADGP|IG|DIG|SP|ASP|DSP|SI|ASI|HC|PC|CP|DCP|ACP)"
+      - "^(Commissioner\\s+of\\s+Police|Special\\s+Commissioner\\s+of\\s+Police)"
+      - "^(Superintendent\\s+of\\s+Police|Additional\\s+Superintendent\\s+of\\s+Police)"
+      - "^(Deputy\\s+Superintendent\\s+of\\s+Police|Assistant\\s+Commissioner\\s+of\\s+Police)"
+      - "^(Inspector\\s+of\\s+Police|Sub\\s+Inspector|Assistant\\s+Sub\\s+Inspector)"
+      - "^(Head\\s+Constable|Police\\s+Constable|Constable)"
+      - "^(Circle\\s+Inspector|CI|Circle\\s+Officer)"
+    weight: 0.3
+    ner_hint: PERSON
+
+  - role: police_officer
+    jurisdictions: [ca]
+    patterns:
+      - "^(RCMP|OPP|SQ|Sûreté|Ontario\\s+Provincial\\s+Police)"
+      - "^(Constable|Corporal|Sergeant|Staff\\s+Sergeant|Inspector)"
+      - "^(RCMP\\s+Officer|Mountie|Police\\s+Constable)"
+    weight: 0.3
+    ner_hint: PERSON
+
+  # ============================================================================
+  # PROSECUTOR
+  # ============================================================================
+  - role: prosecutor
+    jurisdictions: [all]
+    patterns:
+      - "(Prosecutor|Prosecution|Prosecuting\\s+Counsel|Prosecutorial)"
+      - "^(Director\\s+of\\s+Public\\s+Prosecutions|Public\\s+Prosecutor|State\\s+Prosecutor)"
+    weight: 0.35
+    ner_hint: PERSON
+
+  - role: prosecutor
+    jurisdictions: [ke, tz, ug, ng, gh, zm, za]
+    patterns:
+      - "(DPP|ODPP|Deputy\\s+Director\\s+of\\s+Public\\s+Prosecutions)"
+      - "(State\\s+Counsel|Senior\\s+State\\s+Counsel|Principal\\s+State\\s+Counsel)"
+      - "(Prosecution\\s+Counsel|Office\\s+of\\s+the\\s+DPP|Office\\s+of\\s+the\\s+Director)"
+    weight: 0.35
+    ner_hint: PERSON
+
+  - role: prosecutor
+    jurisdictions: [uk]
+    patterns:
+      - "(CPS|Crown\\s+Prosecution\\s+Service|Crown\\s+Prosecutor|Chief\\s+Crown\\s+Prosecutor)"
+      - "(Revenue\\s+and\\s+Customs\\s+Prosecutions\\s+Office|RCPO)"
+      - "(Serious\\s+Fraud\\s+Office|SFO)"
+    weight: 0.35
+    ner_hint: PERSON
+
+  - role: prosecutor
+    jurisdictions: [us]
+    patterns:
+      - "(District\\s+Attorney|DA\\b|Assistant\\s+District\\s+Attorney|ADA)"
+      - "(United\\s+States\\s+Attorney|USAO|Assistant\\s+United\\s+States\\s+Attorney|AUSA)"
+      - "(State's\\s+Attorney|Assistant\\s+State's\\s+Attorney|County\\s+Attorney)"
+      - "(Attorney\\s+General|AG\\b|Assistant\\s+Attorney\\s+General|AAG)"
+      - "(Solicitor\\s+General|Office\\s+of\\s+the\\s+Solicitor\\s+General)"
+      - "(Special\\s+Prosecutor|Independent\\s+Counsel|Special\\s+Counsel)"
+    weight: 0.35
+    ner_hint: PERSON
+
+  - role: prosecutor
+    jurisdictions: [in]
+    patterns:
+      - "(Public\\s+Prosecutor|Additional\\s+Public\\s+Prosecutor|APP)"
+      - "(Assistant\\s+Public\\s+Prosecutor|Director\\s+of\\s+Prosecution)"
+      - "(CBI\\s+Counsel|Enforcement\\s+Directorate|ED\\s+Counsel)"
+    weight: 0.35
+    ner_hint: PERSON
+
+  - role: prosecutor
+    jurisdictions: [ca]
+    patterns:
+      - "(Crown\\s+Prosecutor|Crown\\s+Counsel|Federal\\s+Prosecutor|Procureur)"
+      - "(Director\\s+of\\s+Public\\s+Prosecutions|BC\\s+Prosecution\\s+Service|OPS)"
+      - "(Attorney\\s+General|Ministry\\s+of\\s+the\\s+Attorney\\s+General)"
+    weight: 0.35
+    ner_hint: PERSON
+
+  # ============================================================================
+  # PLAINTIFF / APPLICANT / PETITIONER
+  # ============================================================================
+  - role: plaintiff
+    jurisdictions: [all]
+    patterns:
+      - "^(Plaintiff|Applicant|Petitioner|Claimant|Complainant|Informant)"
+      - "(and\\s+Another|&\\s+Another)\\s*$"
+      - "(suing\\s+as|suing\\s+for|suing\\s+on\\s+behalf|suing\\s+per)"
+      - "(as\\s+Administrator|as\\s+Executor|as\\s+Trustee|as\\s+Next\\s+Friend)"
+    weight: 0.3
+    ner_hint: PERSON
+
+  - role: plaintiff
+    jurisdictions: [ke, tz, ug, ng, gh, in, lk]
+    patterns:
+      - "(&\\s+Another|&\\s+Others|&\\s+Sons|&\\s+Daughters)\\s*$"
+    weight: 0.3
+    ner_hint: PERSON
+
+  - role: plaintiff
+    jurisdictions: [us, ca]
+    patterns:
+      - "^(Class\\s+Action\\s+Plaintiff|Lead\\s+Plaintiff|Named\\s+Plaintiff)"
+      - "(on\\s+behalf\\s+of\\s+(themselves|herself|himself)\\s+and\\s+all\\s+others)"
+      - "(individually\\s+and\\s+on\\s+behalf\\s+of\\s+all\\s+others)"
+    weight: 0.3
+    ner_hint: PERSON
+
+  # ============================================================================
+  # DEFENDANT / RESPONDENT / ACCUSED
+  # ============================================================================
+  - role: defendant
+    jurisdictions: [all]
+    patterns:
+      - "^(Defendant|Respondent|Accused|Appellant|Judgment\\s+Debtor|JD)"
+      - "(and\\s+Another|&\\s+Another)\\s*$"
+    weight: 0.3
+    ner_hint: PERSON
+
+  - role: defendant
+    jurisdictions: [ke, tz, ug, ng, gh, in, lk]
+    patterns:
+      - "(&\\s+Another|&\\s+Others|&\\s+Sons|&\\s+Daughters)\\s*$"
+    weight: 0.3
+    ner_hint: PERSON
+
+  - role: defendant
+    jurisdictions: [us, ca]
+    patterns:
+      - "^(Class\\s+Action\\s+Defendant|Lead\\s+Defendant)"
+    weight: 0.3
+    ner_hint: PERSON
+
+  # ============================================================================
+  # WITNESS
+  # ============================================================================
+  - role: witness
+    jurisdictions: [all]
+    patterns:
+      - "^(Witness|PW\\s*\\d|DW\\s*\\d|Prosecution\\s+Witness|Defence\\s+Witness)"
+      - "^(Defense\\s+Witness|Expert\\s+Witness|Medical\\s+Witness|Eye\\s+Witness)"
+      - "^(Character\\s+Witness|Hostile\\s+Witness|Material\\s+Witness)"
+      - "^(Forensic\\s+Witness|Police\\s+Witness|Occular\\s+Witness)"
+    weight: 0.2
+    ner_hint: PERSON
+
+  - role: witness
+    jurisdictions: [ke, tz, ug, ng, gh, in, lk]
+    patterns:
+      - "^(PW\\d|PW\\s+\\d|DW\\d|DW\\s+\\d|SPW\\d|SPW\\s+\\d)" # Swahili PW/DW shorthand
+      - "^(Prosecution\\s+Witness\\s+\\d+|Defence\\s+Witness\\s+\\d+|Defense\\s+Witness\\s+\\d+)"
+    weight: 0.2
+    ner_hint: PERSON
+
+  # ============================================================================
+  # COURT
+  # ============================================================================
+  - role: court
+    jurisdictions: [all]
+    patterns:
+      - "(Supreme\\s+Court|High\\s+Court|Court\\s+of\\s+Appeal|Industrial\\s+Court)"
+      - "(District\\s+Court|Magistrate'?s?\\s+Court|Kadhi'?s?\\s+Court|Tribunal)"
+      - "(Employment\\s+Court|Family\\s+Court|Children'?s?\\s+Court|Juvenile\\s+Court)"
+      - "(Federal\\s+Court|Circuit\\s+Court|Crown\\s+Court|County\\s+Court)"
+      - "(Superior\\s+Court|Constitutional\\s+Court|Tax\\s+Court|Land\\s+Court)"
+      - "(Environment\\s+Court|Business\\s+Court|Commercial\\s+Court|Admiralty\\s+Court)"
+      - "(International\\s+Court|ECHR|ICJ|ICC|WTO|Tribunal)"
+      - "(the\\s+Supreme\\s+Court|the\\s+High\\s+Court|the\\s+Court|this\\s+Honourable\\s+Court)"
+    weight: 0.15
+    ner_hint: ORG
+
+  - role: court
+    jurisdictions: [ke]
+    patterns:
+      - "(Court\\s+Martial|Court\\s+of\\s+Appeal\\s+of\\s+Kenya|Environment\\s+and\\s+Land\\s+Court|ELC)"
+      - "(Employment\\s+and\\s+Labour\\s+Relations\\s+Court|ELRC|ELRC\\s+Petition)"
+      - "(High\\s+Court\\s+of\\s+Kenya|Supreme\\s+Court\\s+of\\s+Kenya|Court\\s+of\\s+Appeal\\s+at\\s+)"
+      - "(Chief\\s+Magistrate'?s?\\s+Court|Senior\\s+Principal\\s+Magistrate'?s?\\s+Court)"
+      - "(CMCC|RMCC|PMCC|SPMCC)"
+      - "(Kadhi'?s?\\s+Court|Court\\s+of\\s+Appeal\\s+at\\s+)"
+      - "(Military\\s+Court|Court\\s+of\\s+Inquiry)"
+    weight: 0.15
+    ner_hint: ORG
+
+  - role: court
+    jurisdictions: [uk]
+    patterns:
+      - "(EWCA|EWHC|UKSC|UKUT|UKFTT|EWCOP|EWFC)"
+      - "(Upper\\s+Tribunal|First-tier\\s+Tribunal|Employment\\s+Tribunal)"
+      - "(Court\\s+of\\s+Protection|Family\\s+Division|Chancery\\s+Division)"
+      - "(Queen'?s?\\s+Bench\\s+Division|King'?s?\\s+Bench\\s+Division|Administrative\\s+Court)"
+      - "(Central\\s+Criminal\\s+Court|Old\\s+Bailey|Royal\\s+Courts\\s+of\\s+Justice)"
+      - "(Court\\s+of\\s+Appeal\\s+of\\s+England|Supreme\\s+Court\\s+of\\s+the\\s+United\\s+Kingdom)"
+    weight: 0.15
+    ner_hint: ORG
+
+  - role: court
+    jurisdictions: [us]
+    patterns:
+      - "(USSC|U\\.?S\\.?\\s+Supreme\\s+Court|SCOTUS)"
+      - "(F\\.\\d[d|F|Supp|Appx]|FED|Fed\\.\\s+Cir\\.)"
+      - "(United\\s+States\\s+Court\\s+of\\s+Appeals\\s+for\\s+the\\s+\\w+\\s+Circuit)"
+      - "(United\\s+States\\s+District\\s+Court\\s+for\\s+the\\s+District\\s+of)"
+      - "(Bankruptcy\\s+Court|Tax\\s+Court|Court\\s+of\\s+International\\s+Trade)"
+      - "(State\\s+Supreme\\s+Court|Superior\\s+Court|Court\\s+of\\s+Appeals|Appellate\\s+Division)"
+      - "(Circuit\\s+Court|County\\s+Court|District\\s+Court|Municipal\\s+Court)"
+      - "(Supreme\\s+Judicial\\s+Court|Court\\s+of\\s+Criminal\\s+Appeals|Court\\s+of\\s+Claims)"
+    weight: 0.15
+    ner_hint: ORG
+
+  - role: court
+    jurisdictions: [ng]
+    patterns:
+      - "(Supreme\\s+Court\\s+of\\s+Nigeria|Court\\s+of\\s+Appeal\\s+of\\s+Nigeria)"
+      - "(Federal\\s+High\\s+Court|Federal\\s+Capital\\s+Territory\\s+High\\s+Court)"
+      - "(State\\s+High\\s+Court|Sharia\\s+Court\\s+of\\s+Appeal|Customary\\s+Court\\s+of\\s+Appeal)"
+      - "(Sharia\\s+Court|Customary\\s+Court|District\\s+Court|Upper\\s+Area\\s+Court)"
+      - "(National\\s+Industrial\\s+Court|NICN|Code\\s+of\\s+Conduct\\s+Tribunal|CCT)"
+    weight: 0.15
+    ner_hint: ORG
+
+  - role: court
+    jurisdictions: [in]
+    patterns:
+      - "(Supreme\\s+Court\\s+of\\s+India|High\\s+Court\\s+of\\s+|District\\s+Court\\s+of)"
+      - "(Supreme\\s+Court|High\\s+Court|District\\s+Court|Sessions\\s+Court)"
+      - "(Fast\\s+Track\\s+Court|Mahila\\s+Court|Family\\s+Court|Lok\\s+Adalat)"
+      - "(Debts\\s+Recovery\\s+Tribunal|DRT|Debts\\s+Recovery\\s+Appellate\\s+Tribunal|DRAT)"
+      - "(Central\\s+Administrative\\s+Tribunal|CAT|Consumer\\s+Disputes\\s+Redressal\\s+Commission)"
+      - "(National\\s+Company\\s+Law\\s+Tribunal|NCLT|NCLAT)"
+      - "(Competition\\s+Commission\\s+of\\s+India|CCI\\s+Appellate\\s+Tribunal|COMPAT)"
+      - "(Armed\\s+Forces\\s+Tribunal|AFT|ITAT|Income\\s+Tax\\s+Appellate\\s+Tribunal)"
+    weight: 0.15
+    ner_hint: ORG
+
+  - role: court
+    jurisdictions: [ca]
+    patterns:
+      - "(Supreme\\s+Court\\s+of\\s+Canada|SCC|Cour\\s+suprême\\s+du\\s+Canada)"
+      - "(Federal\\s+Court\\s+of\\s+Appeal|Federal\\s+Court|Tax\\s+Court\\s+of\\s+Canada)"
+      - "(Court\\s+of\\s+Appeal\\s+for\\s+\\w+|Ontario\\s+Court\\s+of\\s+Appeal|ONCA)"
+      - "(Superior\\s+Court\\s+of\\s+Justice|Cour\\s+supérieure|Ontario\\s+Superior\\s+Court)"
+      - "(Supreme\\s+Court\\s+of\\s+British\\s+Columbia|BCCA|BCSC)"
+      - "(Court\\s+of\\s+Queen'?s?\\s+Bench|King'?s?\\s+Bench\\s+of\\s+Alberta|ABKB)"
+      - "(Provincial\\s+Court|Ontario\\s+Court\\s+of\\s+Justice|OCJ)"
+      - "(Division\\s+Court|Small\\s+Claims\\s+Court|Family\\s+Court)"
+    weight: 0.15
+    ner_hint: ORG
+
+  # ============================================================================
+  # COURT OFFICIAL
+  # ============================================================================
+  - role: court_official
+    jurisdictions: [all]
+    patterns:
+      - "(Registrar|Deputy\\s+Registrar|Chief\\s+Registrar|Assistant\\s+Registrar)"
+      - "(Court\\s+Clerk|Deputy\\s+Clerk|Court\\s+Recorder|Court\\s+Reporter)"
+      - "(Bailiff|Court\\s+Bailiff|Marshal\\s+of\\s+the\\s+Court)"
+      - "(Probation\\s+Officer|Parole\\s+Officer|Court\\s+Officer|Tipstaff)"
+    weight: 0.2
+    ner_hint: PERSON
+
+  - role: court_official
+    jurisdictions: [us]
+    patterns:
+      - "(Clerk\\s+of\\s+Court|Clerk\\s+of\\s+the\\s+(Circuit|District|Superior|Supreme)\\s+Court)"
+      - "(Chief\\s+Deputy\\s+Clerk|Deputy\\s+Clerk\\s+of\\s+Court)"
+      - "(Court\\s+Administrator|Judicial\\s+Assistant|Law\\s+Clerk|Staff\\s+Attorney)"
+      - "(Pretrial\\s+Services\\s+Officer|US\\s+Probation\\s+Officer)"
+    weight: 0.2
+    ner_hint: PERSON
+
+  # ============================================================================
+  # INTERPRETER / TRANSLATOR
+  # ============================================================================
+  - role: interpreter
+    jurisdictions: [all]
+    patterns:
+      - "^(Interpreter|Court\\s+Interpreter|Sworn\\s+Interpreter|Translator)"
+      - "(Certified\\s+Interpreter|Accredited\\s+Interpreter|Official\\s+Interpreter)"
+    weight: 0.15
+    ner_hint: PERSON
+
+  # ============================================================================
+  # CONTRACT PARTY (generic)
+  # ============================================================================
+  - role: contract_party
+    jurisdictions: [all]
+    patterns:
+      # Formal party designations
+      - "(Party\\s+of\\s+the\\s+(First|Second|Third|Fourth)\\s+Part)"
+      - "(First\\s+Party|Second\\s+Party|Third\\s+Party)"
+      # Incorporation/entity descriptors used in contract recitals
+      - "(duly\\s+incorporated|duly\\s+organized|duly\\s+existing|duly\\s+constituted)"
+      - "(a\\s+company\\s+(incorporated|limited|registered|organized|existing))"
+      - "(a\\s+corporation\\s+(organized|existing|incorporated))"
+      - "(a\\s+limited\\s+liability\\s+company|an?\\s+LLC)"
+      - "(a\\s+business\\s+entity|a\\s+legal\\s+entity|a\\s+statutory\\s+entity)"
+      - "(registered\\s+under\\s+the\\s+(Companies|Business|Partnership|LLC)\\s+[Aa]ct)"
+      # Party side indicators in contract text
+      - "(hereinafter\\s+(referred\\s+to\\s+as|called|known\\s+as))"
+      - "(hereafter\\s+(referred\\s+to\\s+as|called))"
+      - "(collectively\\s+referred\\s+to\\s+as|individually\\s+referred\\s+to\\s+as)"
+      # Commercial role descriptions
+      - "(in\\s+its\\s+capacity\\s+as|acting\\s+as|acting\\s+on\\s+its\\s+own\\s+behalf)"
+      - "(acting\\s+for\\s+and\\s+on\\s+behalf\\s+of|for\\s+and\\s+on\\s+behalf\\s+of)"
+      - "(duly\\s+authorized|duly\\s+empowered|duly\\s+appointed)"
+    weight: 0.25
+    ner_hint: ORG
+
+  # ============================================================================
+  # CONTRACT PARTY — Grantor / Disposing Party
+  # ============================================================================
+  - role: contract_grantor
+    jurisdictions: [all]
+    patterns:
+      - "^(Lessor|Landlord|Licensor|Franchisor|Vendor|Seller|Assignor|Consignor)"
+      - "^(Mortgagor|Pledgor|Chargor|Bailor|Donor|Grantor|Optionor)"
+      - "^(Principal|Employer|Contractor|Outsourcer|Subcontractor)"
+      - "^(Issuer|Originator|Sponsor|Depositor|Transferor|Contributor)"
+      - "^(Producer|Supplier|Provider|Service\\s+Provider|Manufacturer|Distributor)"
+      # Party of the first part contextually within a contract (role-based)
+      - "(of\\s+the\\s+first\\s+part|the\\s+grantor|the\\s+licensor|the\\s+lessor)"
+      # Lender / financing roles
+      - "^(Lender|Financier|Bank|Financial\\s+Institution|Lead\\s+Arranger)"
+      - "^(Creditor|Secured\\s+Party|Chargee|Mortgagee|Lienholder)"
+    weight: 0.3
+    ner_hint: ORG
+
+  # ============================================================================
+  # CONTRACT PARTY — Grantee / Receiving Party
+  # ============================================================================
+  - role: contract_grantee
+    jurisdictions: [all]
+    patterns:
+      - "^(Lessee|Tenant|Licensee|Franchisee|Purchaser|Buyer|Assignee|Consignee)"
+      - "^(Mortgagee|Pledgee|Chargee|Bailee|Donee|Grantee|Optionee)"
+      - "^(Agent|Employee|Contractee|Subcontractee|Outsourcee)"
+      - "^(Service\\s+Recipient|Customer|Client|Distributee|Transferee|End\\s+User)"
+      # Party side indicators
+      - "(of\\s+the\\s+second\\s+part|the\\s+licensee|the\\s+lessee|the\\s+purchaser)"
+      - "(the\\s+borrower|the\\s+grantee|the\\s+assignee)"
+    weight: 0.3
+    ner_hint: ORG
+
+  # ============================================================================
+  # CONTRACT PARTY — Obligor / Financial Support
+  # ============================================================================
+  - role: contract_obligor
+    jurisdictions: [all]
+    patterns:
+      - "^(Guarantor|Surety|Co-Signer|Guarantee|Indemnifier|Indemnitor)"
+      - "^(Principal\\s+Debtor|Co-Debtor|Joint\\s+Debtor|Accommodation\\s+Party)"
+      - "^(Performance\\s+Bond\\s+Issuer|Bond\\s+Principal|Letter\\s+of\\s+Credit\\s+Applicant)"
+      # Borrower / debtor roles (distinct from grantor — borrowing ≠ selling)
+      - "^(Borrower|Debtor|Obligor|Principal\\s+Debtor)"
+    weight: 0.25
+    ner_hint: ORG
+
+  # ============================================================================
+  # CONTRACT PARTY — Obligee / Protected Party
+  # ============================================================================
+  - role: contract_obligee
+    jurisdictions: [all]
+    patterns:
+      - "^(Beneficiary|Indemnitee|Indemnified\\s+Party|Loss\\s+Payee)"
+      - "^(Third\\s+Party\\s+Beneficiary|Intended\\s+Beneficiary|Incidental\\s+Beneficiary)"
+      - "^(Trustee|Custodian|Escrow\\s+Agent|Fiduciary|Receiver)"
+      - "^(Nominee|Representative|Personal\\s+Representative|Executor|Executrix)"
+      - "^(Administrator|Administratrix|Legal\\s+Representative|Attorney-in-Fact)"
+      - "^(Power\\s+of\\s+Attorney|POA|Durable\\s+Power\\s+of\\s+Attorney)"
+    weight: 0.25
+    ner_hint: ORG
+
+  # ============================================================================
+  # NOTARY / WITNESS TO SIGNATURE
+  # ============================================================================
+  - role: notary
+    jurisdictions: [all]
+    patterns:
+      - "^(Notary\\s+Public|Notary|Commissioner\\s+for\\s+Oaths|Commissioner\\s+of\\s+Oaths)"
+      - "(Notary\\s+Public\\s+for|Commissioner\\s+for\\s+Oaths\\s+for)"
+      - "(duly\\s+commissioned|duly\\s+appointed\\s+Notary)"
+      - "(my\\s+commission\\s+(expires|attached|hereto))"
+      - "(\\[?SEAL\\]?|\\[?NOTARIAL\\s+SEAL\\]?|\\[?OFFICIAL\\s+SEAL\\]?)"
+    weight: 0.15
+    ner_hint: PERSON
+
+  # ============================================================================
+  # ARBITRATOR / MEDIATOR
+  # ============================================================================
+  - role: arbitrator
+    jurisdictions: [all]
+    patterns:
+      - "^(Arbitrator|Mediator|Conciliator|Neutral|Umpire)"
+      - "(Sole\\s+Arbitrator|Presiding\\s+Arbitrator|Panel\\s+Chair|Tribunal\\s+Chair)"
+      - "(ICC\\s+Arbitrator|LCIA\\s+Arbitrator|AAA\\s+Arbitrator|SIAC\\s+Arbitrator)"
+      - "(Appointed\\s+by\\s+the\\s+(ICC|LCIA|AAA|SIAC|HKIAC|KCAB))"
+      - "(Neutral\\s+Evaluator|Early\\s+Neutral\\s+Evaluator|Special\\s+Master)"
+      - "(Dispute\\s+Board\\s+Member|DRB\\s+Member|Dispute\\s+Adjudicator)"
+    weight: 0.25
+    ner_hint: PERSON
