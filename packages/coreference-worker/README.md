@@ -9,8 +9,8 @@ from the API, performs coreference resolution, and posts results back.
 - `API_BASE_URL` (default: `http://api:3001`)
 - `COREF_SERVICE_TOKEN` (required)
 - `COREF_QUEUE_NAME` (default: `coreference-resolution`)
-- `COREF_MODEL_NAME` (default: `spacy-neuralcoref`)
-- `COREF_MODEL_VERSION` (default: `spacy-neuralcoref`)
+- `COREF_MODEL_NAME` (default: `fastcoref`)
+- `COREF_MODEL_VERSION` (default: `fastcoref-2.1.6`)
 - `COREF_MAX_CHARS` (default: `200000`)
 
 ## Development

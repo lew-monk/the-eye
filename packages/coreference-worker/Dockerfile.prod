@@ -11,8 +11,16 @@ WORKDIR /app
 RUN pip install --no-cache-dir uv
 
 COPY requirements.txt ./
+
+# Pre-install CPU-only torch before uv pip install to avoid pulling NVIDIA CUDA
+# packages that aren't usable on the target system (fastcoref's pyproject.toml
+# forces CUDA torch via [tool.uv.sources] on Linux).
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
 RUN uv pip install --system -r requirements.txt
 
+COPY patterns.yaml ./
+COPY titles.yaml ./
 COPY src ./src
 
 USER appuser
