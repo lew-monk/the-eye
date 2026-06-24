@@ -19,8 +19,12 @@ export class DocumentQueue {
 
 		const connection = this.client.getConnection()
 
+		console.log('🔌 [DOCUMENT QUEUE] Initializing queues...')
 		this.queue = new Queue('document-processing', { connection })
 		this.corefQueue = new Queue('coreference-resolution', { connection })
+		console.log('✅ [DOCUMENT QUEUE] Created queue: document-processing')
+		console.log('✅ [COREF QUEUE] Created queue: coreference-resolution')
+		
 		this.worker = new Worker('document-processing', this.processDocument.bind(this), { connection })
 		this.events = new QueueEvents('document-processing', { connection })
 
@@ -74,24 +78,39 @@ export class DocumentQueue {
 			const textHash = createHash('sha256').update(result.content || '').digest('hex')
 			await (documentRepository as any).updateById(documentId, { textHash })
 
-			const corefDedup = {
-				id: `${documentId}:${textHash}`,
-				ttl: 3600000,
-			}
-			await this.corefQueue.add('resolve-coreference', {
-				documentId,
-				textHash,
-				modelVersion: process.env.COREF_MODEL_VERSION || 'spacy-neuralcoref',
-			}, {
-				attempts: 3,
-				backoff: { type: 'exponential', delay: 5000 },
-				deduplication: corefDedup as any,
-			})
+		const corefDedup = {
+			id: `${documentId}:${textHash}`,
+			ttl: 3600000,
+		}
+		
+		console.log('📤 [COREF QUEUE] Adding job to queue:', {
+			queueName: 'coreference-resolution',
+			jobName: 'resolve-coreference',
+			documentId,
+			textHash,
+			modelVersion: process.env.COREF_MODEL_VERSION || 'fastcoref'
+		})
+		
+		const job = await this.corefQueue.add('resolve-coreference', {
+			documentId,
+			textHash,
+			modelVersion: process.env.COREF_MODEL_VERSION || 'fastcoref',
+		}, {
+			attempts: 3,
+			backoff: { type: 'exponential', delay: 5000 },
+			deduplication: corefDedup as any,
+		})
+		
+		console.log('✅ [COREF QUEUE] Job added successfully:', {
+			jobId: job.id,
+			documentId,
+			queueName: 'coreference-resolution'
+		})
 
 			// Log successful completion
 			await documentRepository.addProcessingLog({
 				documentId,
-				action: 'processing_completed',
+				action: 'entity_extraction_pending',
 				details: {
 					confidence: result.confidence,
 					processingTime: result.metadata.processingTime,

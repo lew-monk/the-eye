@@ -29,14 +29,15 @@ export class AzureOCRService {
 		}
 
 		const config = AzureConfigSchema.parse({ endpoint, key });
-		this.client = new DocumentAnalysisClient(config.endpoint, new AzureKeyCredential(config.key));
+		const credentials = new AzureKeyCredential(config.key);
+		this.client = new DocumentAnalysisClient(config.endpoint, credentials);
 		this.docRepo = new DocumentRepository();
 	}
 
 	async processDocumentFromBuffer(documentId: number, fileBuffer: Buffer): Promise<OCRResult> {
 		try {
 			// Analyze document
-			let modelId = ModelManager.getModelForDocumentType("default");
+			let modelId = ModelManager.getModelForDocumentType("document");
 			const poller = await this.client.beginAnalyzeDocument(modelId, fileBuffer);
 			const result = await poller.pollUntilDone();
 

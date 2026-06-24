@@ -9,7 +9,7 @@ export class ModelManager {
 		receipt: 'prebuilt-receipt',
 		businessCard: 'prebuilt-businessCard',
 		idDocument: 'prebuilt-idDocument',
-		default: 'prebuilt-contract',
+		default: 'prebuilt-read',
 	}
 
 	static getModelForDocumentType(documentType: string): string {
