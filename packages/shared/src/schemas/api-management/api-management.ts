@@ -38,7 +38,7 @@ export const apiUsers = pgTable('api_users', {
 
 export const apiKeys = pgTable('api_keys', {
 	id: serial('id').primaryKey(),
-	userId: text('user_id').references(() => apiUsers.id).notNull(),
+	userId: text('user_id').notNull(),
 	name: text('name').notNull(),
 	keyHash: text('key_hash').notNull(),
 	keyPrefix: text('key_prefix').notNull(),

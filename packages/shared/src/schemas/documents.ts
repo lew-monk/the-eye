@@ -12,6 +12,7 @@ export const documents = pgTable('documents', {
 	structuredData: jsonb('structured_data'),
 	fullContent: jsonb('full_content'),
 	coreferenceResolvedContent: jsonb('coreference_resolved_content'),
+	normalizedText: text('normalized_text'),
 	confidence: real('confidence'),
 
 	// Metadata

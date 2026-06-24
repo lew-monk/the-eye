@@ -1,5 +1,4 @@
 import { eq, sql } from "drizzle-orm";
-import crypto from 'crypto'
 import { type ApiKey, apiKeys, Permission, RateLimit } from "../schemas";
 import { BaseRepository } from "./base";
 
@@ -7,14 +6,22 @@ export class ApiKeyRepository extends BaseRepository<ApiKey> {
 	constructor() {
 		super(apiKeys);
 	}
-	async createKey(userId: string, name: string, permission: Permission[], scopes: string[] | null, rateLimit: RateLimit | null, expiresAt: Date): Promise<ApiKey> {
-		let keyHash = crypto.createHash('sha256').update(name).digest('hex')
+	async createKey(
+		userId: string,
+		name: string,
+		keyHash: string,
+		keyPrefix: string,
+		permission: Permission[],
+		scopes: string[] | null,
+		rateLimit: RateLimit | null,
+		expiresAt: Date,
+	): Promise<ApiKey> {
 		const result = await this.create({
 			userId,
 			name,
 			isActive: true,
 			keyHash,
-			keyPrefix: name,
+			keyPrefix,
 			permission,
 			scopes,
 			rateLimit,
@@ -26,8 +33,17 @@ export class ApiKeyRepository extends BaseRepository<ApiKey> {
 		return result
 	}
 
-	async rotateApiKey(apiKey: ApiKey): Promise<ApiKey> {
-		const newKey = await this.createKey(apiKey.userId, apiKey.name, apiKey.permission, apiKey.scopes, apiKey.rateLimit, apiKey.expiresAt)
+	async rotateApiKey(apiKey: ApiKey, newKeyHash: string, newKeyPrefix: string): Promise<ApiKey> {
+		const newKey = await this.createKey(
+			apiKey.userId,
+			apiKey.name,
+			newKeyHash,
+			newKeyPrefix,
+			apiKey.permission,
+			apiKey.scopes,
+			apiKey.rateLimit,
+			apiKey.expiresAt,
+		)
 		await this.deleteById(apiKey.id)
 		return newKey
 	}

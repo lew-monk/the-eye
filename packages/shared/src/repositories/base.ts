@@ -3,7 +3,7 @@ import { db } from '../database'
 import { PgTable } from 'drizzle-orm/pg-core'
 
 export interface BaseEntity {
-	id: number
+	id: number | string
 	createdAt?: Date
 	updatedAt?: Date
 }
