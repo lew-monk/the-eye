@@ -23,7 +23,7 @@ COPY apps/api/package.json ./apps/api/
 COPY . .
 
 # Install dependencies and build shared packages
-RUN bun install && bun run build --filter='@workspace/shared' && bun run build --filter='@workspace/ui'
+RUN bun install && bun run build --filter='@workspace/shared' && bun run build --filter='@workspace/ui' && bun run build --filter='@workspace/core'
 
 # Web development stage
 FROM base AS web-dev

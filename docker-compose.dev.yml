@@ -4,13 +4,14 @@ services:
   # Infrastructure
   postgres:
     restart: always
-    image: postgres:15-alpine
+    image: pgvector/pgvector:0.8.0-pg16
     environment:
       POSTGRES_DB: legal_docs
       POSTGRES_USER: legal_user
       POSTGRES_PASSWORD: legal_pass
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_vec:/var/lib/postgresql/data
+      - ./packages/shared/src/migrations/init:/docker-entrypoint-initdb.d
     ports:
       - "5432:5432"
     healthcheck:
@@ -20,6 +21,11 @@ services:
       retries: 5
     networks:
       - the-eye-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "10"
 
   redis:
     image: redis:7-alpine
@@ -33,6 +39,11 @@ services:
       retries: 5
     networks:
       - the-eye-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "10"
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -45,6 +56,11 @@ services:
       - postgres
     networks:
       - the-eye-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "10"
 
   # Development services with hot reload
   web:
@@ -68,6 +84,11 @@ services:
     networks:
       - the-eye-network
     command: sh -c "cd apps/web && bun run dev --host 0.0.0.0"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "10"
 
   api:
     build:
@@ -82,8 +103,8 @@ services:
       - .:/app
       - /app/node_modules
       - /app/apps/api/node_modules
-      # - /app/packages/shared/node_modules
-      # - /app/packages/core/node_modules
+      - /app/packages/shared/node_modules
+      - /app/packages/core/node_modules
     depends_on:
       postgres:
         condition: service_healthy
@@ -93,27 +114,42 @@ services:
     networks:
       - the-eye-network
     command: sh -c "bun run watch:packages & cd apps/api && bun run dev"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "10"
 
-  # coreference-worker:
-  #   build:
-  #     context: ./packages/coreference-worker
-  #     dockerfile: Dockerfile.dev
-  #   environment:
-  #     - REDIS_URL=redis://redis:6379
-  #     - API_BASE_URL=http://api:3001
-  #     - COREF_SERVICE_TOKEN=${COREF_SERVICE_TOKEN}
-  #     - COREF_MODEL_VERSION=spacy-neuralcoref
-  #     - COREF_MAX_CHARS=200000
-  #   depends_on:
-  #     redis:
-  #       condition: service_healthy
-  #     api:
-  #       condition: service_started
-  #   networks:
-  #     - the-eye-network
+  coreference-worker:
+    build:
+      context: ./packages/coreference-worker
+      dockerfile: Dockerfile.dev
+    env_file:
+      - ./.env
+    environment:
+      - COREF_MODEL_ARCHITECTURE=${COREF_MODEL_ARCHITECTURE:-FCoref}
+    volumes:
+      - ./packages/coreference-worker/src:/app/src
+      - ./packages/coreference-worker/patterns.yaml:/app/patterns.yaml
+      - ./packages/coreference-worker/titles.yaml:/app/titles.yaml
+      - huggingface_cache:/root/.cache/huggingface
+    depends_on:
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+    networks:
+      - the-eye-network
+    command: watchfiles "python -m src.worker" /app/src
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "10"
 
 volumes:
-  postgres_data:
+  postgres_data_vec:
+  huggingface_cache:
 
 networks:
   the-eye-network:
