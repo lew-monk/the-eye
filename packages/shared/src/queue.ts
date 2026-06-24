@@ -18,8 +18,17 @@ export class BullMQClient {
 
 	constructor() {
 		const config = getQueueConfig()
+		console.log('🔌 [BULLMQ CLIENT] Connecting to Redis:', config.redisUrl)
 		this.connection = new IORedis(config.redisUrl, {
 			maxRetriesPerRequest: null,
+		})
+		
+		this.connection.on('connect', () => {
+			console.log('✅ [BULLMQ CLIENT] Connected to Redis successfully')
+		})
+		
+		this.connection.on('error', (err) => {
+			console.error('❌ [BULLMQ CLIENT] Redis connection error:', err.message)
 		})
 	}
 

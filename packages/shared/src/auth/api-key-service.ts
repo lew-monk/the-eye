@@ -1,7 +1,8 @@
 import { ApiKeyRepository } from "../repositories/api-key";
-import { Permission, type ApiKey } from "../schemas";
+import { Permission, RateLimit, type ApiKey } from "../schemas";
 import { InsufficientPermissionsError, InvalidApiKeyError } from "../exceptions";
 import IORedis from 'ioredis'
+import crypto from 'crypto'
 import { getQueueConfig } from "../queue";
 
 /**
@@ -51,13 +52,19 @@ export class ApiKeyService {
 	 * @returns {Promise<ApiKey | null>} A promise that resolves to the API key or null if not found
 	 * */
 	async getApiKeyFromRedis(apiKeyHash: string): Promise<ApiKey | null> {
-		const key = `api-key:${apiKeyHash}`
-		const value = await this.connection.get(key)
-		if (!value) {
+		try {
+			const key = `api-key:${apiKeyHash}`
+			const value = await this.connection.get(key)
+			if (!value) {
+				return null
+			}
+			return JSON.parse(value)
+		} catch (error) {
+			console.error('Error getting API key from redis:', error)
 			return null
 		}
-		return JSON.parse(value)
 	}
+
 	/**
 	 * Update the API key in redis
 	 * @param apiKey
@@ -81,6 +88,7 @@ export class ApiKeyService {
 		if (!apiKeyRecord) {
 			throw new InvalidApiKeyError('Invalid API key')
 		}
+
 		// Check if the service permission exists
 		let permissionReference = apiKeyRecord.permission.findIndex(p => p.service === permission.service)
 		if (permissionReference === -1) {
@@ -88,24 +96,22 @@ export class ApiKeyService {
 		}
 
 		// Check if the resource permission exists
-		if (apiKeyRecord.permission[permissionReference]!.resource === permission.resource) {
+		if (apiKeyRecord.permission[permissionReference]!.resource !== permission.resource) {
 			throw new InsufficientPermissionsError('Invalid resource permission')
-		}
-
-		// Check if the action permission exists
-		if (permissionReference === -1) {
-			throw new InsufficientPermissionsError('Invalid action permission')
 		}
 
 		// Check if the action is allowed
 		if (permission.actions.length > 0) {
+			const allowedActions = apiKeyRecord.permission[permissionReference]!.actions
+			const hasWildcard = allowedActions.includes('*')
+
 			for (const action of permission.actions) {
-				if (apiKeyRecord.permission[permissionReference]!.actions.includes(action)) {
-					throw new InsufficientPermissionsError('Action not allowed')
+				if (!hasWildcard && !allowedActions.includes(action)) {
+					throw new InsufficientPermissionsError(`Action '${action}' not allowed for resource '${permission.resource}'`)
 				}
 			}
 		} else {
-			throw new InsufficientPermissionsError('Action not allowed')
+			throw new InsufficientPermissionsError('No actions requested')
 		}
 		return { allowed: true, apiKey: apiKeyRecord }
 
@@ -117,6 +123,7 @@ export class ApiKeyService {
 	 * @returns {Promise<ApiKey | null>} A promise that resolves to the API key or null if not found
 	 * */
 	async getApiKey(apiKey: string): Promise<ApiKey | null> {
+		console.log('getApiKey', apiKey)
 		// Check if the API key exists in redis
 		let apiKeyRecord = await this.getApiKeyFromRedis(apiKey)
 		if (apiKeyRecord) {
@@ -125,6 +132,7 @@ export class ApiKeyService {
 
 		// Check if the API key exists in the database
 		apiKeyRecord = await this.apiKeyRepository.findByHash(apiKey)
+		console.log('apiKeyRecord', apiKeyRecord)
 		if (!apiKeyRecord) {
 			return null
 		}
@@ -158,5 +166,33 @@ export class ApiKeyService {
 		}
 		return false
 
+	}
+
+	async createKey(
+		userId: string,
+		name: string,
+		permission: Permission[],
+		scopes: string[] | null,
+		rateLimit: RateLimit | null,
+		expiresAt: Date,
+	): Promise<{ rawKey: string; apiKey: ApiKey }> {
+		const rawKey = crypto.randomBytes(32).toString('hex')
+		const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex')
+		const keyPrefix = rawKey.slice(0, 8)
+
+		const apiKeyRecord = await this.apiKeyRepository.createKey(
+			userId,
+			name,
+			keyHash,
+			keyPrefix,
+			permission,
+			scopes,
+			rateLimit,
+			expiresAt,
+		)
+
+		await this.addApiKeyToRedis(apiKeyRecord)
+
+		return { rawKey, apiKey: apiKeyRecord }
 	}
 }
