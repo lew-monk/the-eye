@@ -10,6 +10,7 @@ COPY package.json bun.lock ./
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/core/package.json ./packages/core/
+COPY packages/workers/package.json ./packages/workers/
 COPY apps/api/package.json ./apps/api/
 
 # Install dependencies
@@ -26,6 +27,7 @@ COPY . .
 RUN bun run build --filter='@workspace/shared'
 RUN bun run build --filter='@workspace/ui'
 RUN bun run build --filter='@workspace/core'
+RUN bun run build --filter='@workspace/workers'
 
 # Build the API
 RUN bun run build --filter='@workspace/api'
@@ -38,6 +40,7 @@ WORKDIR /app
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
 COPY --from=builder /app/packages/ui/dist ./packages/ui/dist
 COPY --from=builder /app/packages/core/dist ./packages/core/dist
+COPY --from=builder /app/packages/workers/dist ./packages/workers/dist
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/package.json ./apps/api/
 

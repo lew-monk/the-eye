@@ -1,3 +1,4 @@
+import { DocumentQueue } from '@workspace/core'
 import { documentRepository, chunkRepository } from '@workspace/shared'
 
 export abstract class ChunksService {
@@ -10,6 +11,7 @@ export abstract class ChunksService {
 		normalizedText?: string,
 	) {
 		const document = await documentRepository.findById(documentId)
+		const queue = new DocumentQueue()
 		if (!document) return null
 
 		const rows = chunks.map((c) => ({
@@ -43,6 +45,8 @@ export abstract class ChunksService {
 				normalized: normalizedText !== undefined,
 			},
 		})
+
+		await queue.addDocumentChunkToQueue(documentId)
 
 		return { count: inserted.length }
 	}

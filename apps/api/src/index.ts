@@ -1,6 +1,9 @@
 import { Elysia } from 'elysia'
 import { cors } from '@elysiajs/cors'
 import { modules } from './modules'
+import { registerAllWorkers } from '@workspace/workers'
+
+registerAllWorkers()
 
 const app = new Elysia()
 	.state({ startTime: Date.now(), apiKey: null })

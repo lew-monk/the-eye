@@ -2,7 +2,7 @@ import { Queue, Worker, QueueEvents } from 'bullmq'
 import { BullMQClient } from '@workspace/shared'
 import { documentRepository } from '@workspace/shared'
 import { DocumentProcessor } from '../ocr'
-import { QueueProcessingOptions, DocumentJobData, CoreferenceJobData } from './types'
+import { QueueProcessingOptions, DocumentJobData, CoreferenceJobData, EmbeddingJobData } from './types'
 import { createHash } from 'crypto'
 
 export class DocumentQueue {
@@ -12,6 +12,7 @@ export class DocumentQueue {
 	private processor: DocumentProcessor
 	private client: BullMQClient
 	private corefQueue: Queue<CoreferenceJobData>
+	private embeddingQueue: Queue<EmbeddingJobData>
 
 	constructor() {
 		this.client = new BullMQClient()
@@ -22,9 +23,11 @@ export class DocumentQueue {
 		console.log('🔌 [DOCUMENT QUEUE] Initializing queues...')
 		this.queue = new Queue('document-processing', { connection })
 		this.corefQueue = new Queue('coreference-resolution', { connection })
+		this.embeddingQueue = new Queue('generate-embeddings', { connection })
 		console.log('✅ [DOCUMENT QUEUE] Created queue: document-processing')
 		console.log('✅ [COREF QUEUE] Created queue: coreference-resolution')
-		
+		console.log('✅ [EMBEDDING QUEUE] Created queue: generate-embeddings')
+
 		this.worker = new Worker('document-processing', this.processDocument.bind(this), { connection })
 		this.events = new QueueEvents('document-processing', { connection })
 
@@ -78,34 +81,34 @@ export class DocumentQueue {
 			const textHash = createHash('sha256').update(result.content || '').digest('hex')
 			await (documentRepository as any).updateById(documentId, { textHash })
 
-		const corefDedup = {
-			id: `${documentId}:${textHash}`,
-			ttl: 3600000,
-		}
-		
-		console.log('📤 [COREF QUEUE] Adding job to queue:', {
-			queueName: 'coreference-resolution',
-			jobName: 'resolve-coreference',
-			documentId,
-			textHash,
-			modelVersion: process.env.COREF_MODEL_VERSION || 'fastcoref'
-		})
-		
-		const job = await this.corefQueue.add('resolve-coreference', {
-			documentId,
-			textHash,
-			modelVersion: process.env.COREF_MODEL_VERSION || 'fastcoref',
-		}, {
-			attempts: 3,
-			backoff: { type: 'exponential', delay: 5000 },
-			deduplication: corefDedup as any,
-		})
-		
-		console.log('✅ [COREF QUEUE] Job added successfully:', {
-			jobId: job.id,
-			documentId,
-			queueName: 'coreference-resolution'
-		})
+			const corefDedup = {
+				id: `${documentId}:${textHash}`,
+				ttl: 3600000,
+			}
+
+			console.log('📤 [COREF QUEUE] Adding job to queue:', {
+				queueName: 'coreference-resolution',
+				jobName: 'resolve-coreference',
+				documentId,
+				textHash,
+				modelVersion: process.env.COREF_MODEL_VERSION || 'fastcoref'
+			})
+
+			const job = await this.corefQueue.add('resolve-coreference', {
+				documentId,
+				textHash,
+				modelVersion: process.env.COREF_MODEL_VERSION || 'fastcoref',
+			}, {
+				attempts: 3,
+				backoff: { type: 'exponential', delay: 5000 },
+				deduplication: corefDedup as any,
+			})
+
+			console.log('✅ [COREF QUEUE] Job added successfully:', {
+				jobId: job.id,
+				documentId,
+				queueName: 'coreference-resolution'
+			})
 
 			// Log successful completion
 			await documentRepository.addProcessingLog({
@@ -135,8 +138,15 @@ export class DocumentQueue {
 		}
 	}
 
+	async addDocumentChunkToQueue(documentId: number): Promise<void> {
+		await this.embeddingQueue.add('generate-embeddings', { documentId }, {
+			attempts: 5,
+			backoff: { type: 'exponential', delay: 2000 },
+		})
+	}
+
 	private setupEventHandlers(): void {
-		this.events.on('completed', async ({ jobId, returnvalue }) => {
+		this.events.on('completed', async ({ jobId }) => {
 			console.log(`Job ${jobId} completed successfully`)
 		})
 
@@ -149,6 +159,7 @@ export class DocumentQueue {
 		await this.worker.close()
 		await this.queue.close()
 		await this.corefQueue.close()
+		await this.embeddingQueue.close()
 		await this.events.close()
 		await this.client.close()
 	}

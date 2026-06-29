@@ -12,6 +12,10 @@ export interface CoreferenceJobData {
 	modelVersion: string
 }
 
+export interface EmbeddingJobData {
+	documentId: number
+}
+
 export interface QueueProcessingOptions {
 	documentType: DocumentType
 	extractFullContent: boolean

@@ -105,6 +105,7 @@ services:
       - /app/apps/api/node_modules
       - /app/packages/shared/node_modules
       - /app/packages/core/node_modules
+      - /app/packages/workers/node_modules
     depends_on:
       postgres:
         condition: service_healthy

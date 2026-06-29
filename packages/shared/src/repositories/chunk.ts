@@ -19,4 +19,11 @@ export class DocumentChunkRepository extends BaseRepository<DocumentChunk, NewDo
 			.delete(documentChunks)
 			.where(eq(documentChunks.documentId, documentId))
 	}
+
+	async updateEmbedding(id: number, embedding: number[]): Promise<void> {
+		await this.db
+			.update(documentChunks)
+			.set({ embedding } as any)
+			.where(eq(documentChunks.id, id))
+	}
 }

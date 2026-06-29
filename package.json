@@ -9,8 +9,9 @@
     "build": "bun run --filter='*' build",
     "build:shared": "cd packages/shared && bun run build",
     "build:core": "cd packages/core && bun run build",
+    "build:workers": "cd packages/workers && bun run build",
     "dev": "bun run dev --filter='*'",
-    "watch:packages": "nodemon --watch packages/shared/src --watch packages/core/src --exec 'bun run build:shared && bun run build:core'",
+    "watch:packages": "nodemon --watch packages/shared/src --watch packages/core/src --watch packages/workers/src --exec 'bun run build:shared && bun run build:core && bun run build:workers'",
     "lint": "bun run lint --filter='*'",
     "typecheck": "bun run typecheck --filter='*'",
     "clean": "bun run clean --filter='*'"

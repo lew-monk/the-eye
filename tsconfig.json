@@ -29,6 +29,7 @@
       "@workspace/ui": ["./packages/ui/src"],
       "@workspace/shared": ["./packages/shared/src"],
       "@workspace/core": ["./packages/core/src"],
+      "@workspace/workers": ["./packages/workers/src"],
       "@workspace/api": ["./apps/api/src"],
       "@workspace/web": ["./apps/web/src"]
     }
