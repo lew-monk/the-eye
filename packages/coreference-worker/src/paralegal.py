@@ -166,7 +166,7 @@ def _resolve_entity_type(
             return doc.ents[0].label_
         if doc and doc[0].ent_type_:
             return doc[0].ent_type_
-    return ner_hint
+    return ner_hint or "other"
 
 
 def _get_ner_tag(entity_type: Optional[str]) -> str:

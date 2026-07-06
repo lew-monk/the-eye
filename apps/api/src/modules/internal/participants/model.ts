@@ -8,7 +8,7 @@ export const ParticipantModel = {
 				normalizedName: t.String(),
 				role: t.String(),
 				roleConfidence: t.Optional(t.Number()),
-				entityType: t.Optional(t.String()),
+				entityType: t.Nullable(t.Optional(t.String())),
 				mentionCount: t.Optional(t.Number()),
 				mentions: t.Optional(t.Array(t.String())),
 				clusterId: t.Optional(t.Number()),

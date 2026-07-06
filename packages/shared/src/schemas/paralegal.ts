@@ -3,9 +3,11 @@ import { customType } from 'drizzle-orm/pg-core'
 import { documents } from './documents'
 
 // Custom vector type for pgvector (sized for largest model we might use)
+export const EMBEDDING_COLUMN_DIMENSIONS = 3072
+
 export const vector = customType<{ data: number[]; driverData: string; config: { dimensions: number } }>({
 	dataType(config) {
-		return `vector(${config?.dimensions ?? 3072})`
+		return `vector(${config?.dimensions ?? EMBEDDING_COLUMN_DIMENSIONS})`
 	},
 	toDriver(value: number[]): string {
 		return JSON.stringify(value)
@@ -46,7 +48,7 @@ export const documentChunks = pgTable('document_chunks', {
 		.references(() => documents.id, { onDelete: 'cascade' }),
 	chunkIndex: integer('chunk_index').notNull(),
 	text: text('text').notNull(),
-	embedding: vector('embedding', { dimensions: 3072 }),
+	embedding: vector('embedding', { dimensions: EMBEDDING_COLUMN_DIMENSIONS }),
 	embeddingProvider: text('embedding_provider'),
 	embeddingModel: text('embedding_model'),
 	chunkTextHash: text('chunk_text_hash'),

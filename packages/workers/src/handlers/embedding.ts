@@ -2,9 +2,9 @@ import { embedMany } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { chunkRepository, documentRepository } from '@workspace/shared'
 
-const MODEL = 'text-embedding-3-small'
-const DIMENSIONS = 1536
-const PROVIDER = 'openai'
+const MODEL = process.env.EMBEDDING_MODEL || 'text-embedding-3-small'
+const DIMENSIONS = Number(process.env.EMBEDDING_DIMENSIONS) || 1536
+const PROVIDER = process.env.EMBEDDING_PROVIDER || 'openai'
 const VERSION = 1
 
 export async function embeddingHandler(job: { data: { documentId: number } }) {
