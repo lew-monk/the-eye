@@ -46,6 +46,6 @@ def resolve_coref(nlp, text: str) -> CorefResult:
 
 
 def build_pipeline(model_architecture: str = "FCoref") -> Any:
-    nlp = spacy.load("en_core_web_sm", exclude=["parser", "lemmatizer", "ner", "textcat"])
+    nlp = spacy.load("en_core_web_sm", exclude=["parser", "lemmatizer", "textcat"])
     nlp.add_pipe("fastcoref", config={"model_architecture": model_architecture})
     return nlp

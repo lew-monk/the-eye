@@ -1,12 +1,38 @@
 from __future__ import annotations
 
 import re
+from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import semchunk
 import tiktoken
 import yaml
+
+
+PRONOUNS = {
+    "i", "me", "my", "mine", "myself",
+    "you", "your", "yours", "yourself",
+    "he", "him", "his", "himself",
+    "she", "her", "hers", "herself",
+    "it", "its", "itself",
+    "we", "us", "our", "ours", "ourselves",
+    "they", "them", "their", "theirs", "themselves",
+}
+
+ENTITY_TYPE_MAP: Dict[str, str] = {
+    "PERSON": "PERSON",
+    "ORG": "ORG",
+    "GPE": "LOCATION",
+    "DATE": "DATE",
+    "MONEY": "AMOUNT",
+    "LAW": "STATUTE",
+    "NORP": "GROUP",
+    "LOC": "LOCATION",
+    "PRODUCT": "PRODUCT",
+    "EVENT": "EVENT",
+    "FAC": "FACILITY",
+}
 
 
 def load_patterns(path: Path | str) -> List[Dict[str, Any]]:
@@ -28,19 +54,68 @@ def load_titles(path: Path | str) -> Dict[str, List[str]]:
     }
 
 
-def _normalize_name(name: str, titles: Dict[str, List[str]]) -> str:
+def pick_canonical(mentions: List[str], nlp=None) -> str:
+    cleaned = [m.strip() for m in mentions if m.strip()]
+    if not cleaned:
+        return ""
+
+    non_pronouns = [m for m in cleaned if m.lower() not in PRONOUNS]
+
+    if non_pronouns:
+        return max(non_pronouns, key=len)
+
+    if nlp is not None:
+        for m in cleaned:
+            doc = nlp(m)
+            if doc.ents and doc.ents[0].label_ == "PERSON":
+                return m
+
+    freq = Counter(cleaned)
+    return freq.most_common(1)[0][0]
+
+
+def _normalize_name(
+    name: str,
+    titles: Dict[str, List[str]],
+    matched_pattern: Optional[str] = None,
+    matched_text: Optional[str] = None,
+) -> str:
     result = name.strip()
-    for prefix in titles["prefixes"]:
-        p = re.compile(r"^\s*" + re.escape(prefix) + r"\.?\s+", re.IGNORECASE)
-        if p.match(result):
-            result = p.sub("", result)
-            break
+
+    # 1. Strip the matched role text
+    if matched_text:
+        result = re.sub(
+            re.escape(matched_text), "", result, flags=re.IGNORECASE
+        ).strip()
+    elif matched_pattern:
+        result = re.sub(matched_pattern, "", result, flags=re.IGNORECASE).strip()
+
+    # 2. Strip legal suffixes from titles.yaml
     for suffix in titles["suffixes"]:
         p = re.compile(r"[,\s]+" + re.escape(suffix) + r"\.?\s*$", re.IGNORECASE)
         if p.search(result):
             result = p.sub("", result)
             break
-    return result.strip() or name.strip()
+
+    # 3. Strip universal titles from titles.yaml (repeat until none match)
+    changed = True
+    while changed:
+        changed = False
+        for prefix in titles["prefixes"]:
+            p = re.compile(r"^\s*" + re.escape(prefix) + r"\.?\s+", re.IGNORECASE)
+            if p.match(result):
+                result = p.sub("", result)
+                changed = True
+                break
+
+    # 4. Strip initials (single uppercase letters with optional period, followed by space or end)
+    result = re.sub(r"\b[A-Z]\.?(?:\s+|$)", "", result).strip()
+
+    # 5. Strip punctuation, lowercase, normalize whitespace
+    result = re.sub(r"[^\w\s-]", "", result)
+    result = " ".join(result.lower().split())
+
+    return result or name.strip().lower()
 
 
 def _strip_article(text: str) -> str:
@@ -60,7 +135,7 @@ def _is_whole_word(text: str, start: int, end: int, matched: str) -> bool:
 def _match_role(
     mention_texts: List[str],
     patterns: List[Dict[str, Any]],
-) -> tuple[str, float, Optional[str]]:
+) -> tuple[str, float, Optional[str], Optional[str], Optional[str]]:
     sorted_patterns = sorted(
         patterns, key=lambda p: p.get("weight", 0), reverse=True
     )
@@ -76,8 +151,42 @@ def _match_role(
                 if m and _is_whole_word(
                     stripped, m.start(), m.end(), m.group()
                 ):
-                    return role, weight, ner_hint
-    return "other", 0.0, None
+                    return role, weight, ner_hint, regex_str, m.group()
+    return "other", 0.0, None, None, None
+
+
+def _resolve_entity_type(
+    canonical_name: str,
+    ner_hint: Optional[str],
+    nlp=None,
+) -> Optional[str]:
+    if nlp is not None:
+        doc = nlp(canonical_name)
+        if doc.ents:
+            return doc.ents[0].label_
+        if doc and doc[0].ent_type_:
+            return doc[0].ent_type_
+    return ner_hint
+
+
+def _get_ner_tag(entity_type: Optional[str]) -> str:
+    if entity_type is None:
+        return "PERSON"
+    return ENTITY_TYPE_MAP.get(entity_type, "PERSON")
+
+
+def _has_position_boost(
+    resolved_text: str,
+    mentions: List[Dict[str, Any]],
+    cluster_id: int,
+) -> float:
+    tenth = len(resolved_text) // 10
+    for m in mentions:
+        if m.get("cluster_id") == cluster_id:
+            pos = m.get("start", 0)
+            if pos < tenth or pos > len(resolved_text) - tenth:
+                return 1.2
+    return 1.0
 
 
 def extract_participants(
@@ -86,36 +195,63 @@ def extract_participants(
     resolved_text: str,
     patterns: List[Dict[str, Any]],
     titles: Dict[str, List[str]],
+    nlp=None,
 ) -> List[Dict[str, Any]]:
     participants: List[Dict[str, Any]] = []
-    total_mentions = max(len(mentions), 1)
 
+    # First pass: collect mention counts and cluster sizes
+    cluster_data = []
+    total_mention_counts = []
     for cluster_id, cluster_texts in enumerate(clusters):
         cleaned = [t.strip() for t in cluster_texts if t.strip()]
         if not cleaned:
             continue
-
         unique_mentions = list(dict.fromkeys(cleaned))
-        canonical_name = max(unique_mentions, key=len)
-        role, role_confidence, entity_type = _match_role(
+        total_mention_count = len(cleaned)
+        cluster_data.append((cluster_id, unique_mentions))
+        total_mention_counts.append(total_mention_count)
+
+    if not cluster_data:
+        return []
+
+    max_mention_count = max(total_mention_counts)
+    max_cluster_size = max(len(cd[1]) for cd in cluster_data)
+
+    for idx, (cluster_id, unique_mentions) in enumerate(cluster_data):
+        canonical_name = pick_canonical(unique_mentions, nlp)
+        role, role_confidence, ner_hint, matched_pattern, matched_text = _match_role(
             unique_mentions, patterns
         )
-        normalized_name = _normalize_name(canonical_name, titles)
-        mention_count = len(unique_mentions)
-        relevance_score = (mention_count / total_mentions) * role_confidence
+        entity_type = _resolve_entity_type(canonical_name, ner_hint, nlp)
+        normalized_name = _normalize_name(
+            canonical_name, titles, matched_pattern, matched_text
+        )
+
+        total_mentions = total_mention_counts[idx]
+        mention_freq_norm = total_mentions / max(max_mention_count, 1)
+        cluster_size_norm = len(unique_mentions) / max(max_cluster_size, 1)
+        position_weight = _has_position_boost(resolved_text, mentions, cluster_id)
+        role_weight = role_confidence
+
+        # 4-factor relevance scoring
+        relevance_score = (
+            0.3 * mention_freq_norm
+            + 0.1 * position_weight
+            + 0.15 * cluster_size_norm
+            + 0.45 * role_weight
+        )
 
         participant: Dict[str, Any] = {
             "name": canonical_name,
             "normalizedName": normalized_name,
             "role": role,
             "roleConfidence": round(role_confidence, 4),
-            "mentionCount": mention_count,
+            "entityType": entity_type,
+            "mentionCount": total_mentions,
             "mentions": unique_mentions,
             "clusterId": cluster_id,
             "relevanceScore": round(relevance_score, 4),
         }
-        if entity_type is not None:
-            participant["entityType"] = entity_type
         participants.append(participant)
 
     participants.sort(key=lambda p: p["relevanceScore"], reverse=True)
@@ -139,7 +275,7 @@ def normalize_text(
     for p in participants:
         tag = p["role"].upper()
         if tag == "OTHER":
-            tag = "PERSON"
+            tag = _get_ner_tag(p.get("entityType"))
         for m in p["mentions"]:
             mention_to_tag[m] = tag
 

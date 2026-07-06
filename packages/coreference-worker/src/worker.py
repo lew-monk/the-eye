@@ -175,7 +175,7 @@ async def process_job(job, job_token) -> Optional[Dict[str, Any]]:
         print(f"❌ [POST ERROR] Failed to post coref results to API: {e}")
         raise
 
-    participants = extract_participants(clusters, mentions, resolved_text, PATTERNS, TITLES)
+    participants = extract_participants(clusters, mentions, resolved_text, PATTERNS, TITLES, NLP)
     print(f"👤 [PARTICIPANTS] Extracted {len(participants)} participants")
 
     if participants:
