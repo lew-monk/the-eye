@@ -18,6 +18,7 @@ from src.paralegal import (
     extract_participants,
     load_patterns,
     load_titles,
+    load_weights,
     normalize_text,
 )
 
@@ -39,6 +40,7 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 NLP = None
 PATTERNS: List[Dict[str, Any]] = []
 TITLES: Dict[str, List[str]] = {"prefixes": [], "suffixes": []}
+WEIGHTS: Dict[str, Any] = {"default": {}, "per_document_type": {}}
 
 
 def _headers() -> Dict[str, str]:
@@ -121,6 +123,7 @@ async def process_job(job, job_token) -> Optional[Dict[str, Any]]:
 
     meta = fetch_extracted_text(document_id)
     extracted_text = meta.get("text", "")
+    document_type = meta.get("documentType", "")
     existing_source_hash = meta.get("coreferenceSourceTextHash")
 
     if not extracted_text:
@@ -189,7 +192,10 @@ async def process_job(job, job_token) -> Optional[Dict[str, Any]]:
     normalized_text = normalize_text(resolved_text, participants, mentions)
     print(f"📝 [NORMALIZE] Text normalized ({len(normalized_text)} chars)")
 
-    paralegal_chunks = paralegal_chunk(normalized_text, PARALEGAL_CHUNK_MAX_TOKENS)
+    paralegal_chunks = paralegal_chunk(
+        normalized_text, PARALEGAL_CHUNK_MAX_TOKENS,
+        weights=WEIGHTS, document_type=document_type,
+    )
     print(f"🧩 [CHUNKS] Generated {len(paralegal_chunks)} chunks")
 
     if paralegal_chunks:
@@ -229,6 +235,7 @@ async def main() -> None:
 
     patterns_path = Path(__file__).resolve().parent.parent / "patterns.yaml"
     titles_path = Path(__file__).resolve().parent.parent / "titles.yaml"
+    weights_path = Path(__file__).resolve().parent.parent / "weights.yaml"
 
     print(f"📋 [CONFIG] Loading patterns from {patterns_path}")
     PATTERNS = load_patterns(patterns_path)
@@ -239,6 +246,12 @@ async def main() -> None:
     prefixes = len(TITLES["prefixes"])
     suffixes = len(TITLES["suffixes"])
     print(f"📋 [CONFIG] Loaded {prefixes} title prefixes, {suffixes} title suffixes")
+
+    print(f"📋 [CONFIG] Loading weights from {weights_path}")
+    global WEIGHTS
+    WEIGHTS = load_weights(weights_path)
+    num_doc_types = len(WEIGHTS.get("per_document_type", {}))
+    print(f"📋 [CONFIG] Loaded weights with {num_doc_types} document type overrides")
 
     print(f"🔌 [REDIS] Connecting to Redis at {REDIS_URL}")
     queue = Queue(COREF_QUEUE_NAME, {"connection": REDIS_URL})

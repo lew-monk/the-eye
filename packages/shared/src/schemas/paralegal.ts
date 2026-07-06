@@ -53,6 +53,7 @@ export const documentChunks = pgTable('document_chunks', {
 	embeddingModel: text('embedding_model'),
 	chunkTextHash: text('chunk_text_hash'),
 	tokenCount: integer('token_count'),
+	positionWeight: real('position_weight'),
 	createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
 	docChunkIdx: uniqueIndex('idx_chunks_document_chunk').on(table.documentId, table.chunkIndex),

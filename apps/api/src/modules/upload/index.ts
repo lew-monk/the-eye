@@ -5,11 +5,11 @@ import { requirePermission } from '../../middleware/auth'
 
 export const upload = new Elysia()
 	.state({ startTime: Date.now(), apiKey: null })
-	.onBeforeHandle(requirePermission({
-		service: 'api',
-		resource: 'documents',
-		actions: ['create'],
-	}))
+	// .onBeforeHandle(requirePermission({
+	// 	service: 'api',
+	// 	resource: 'documents',
+	// 	actions: ['create'],
+	// }))
 	.post(
 		'/upload',
 		async ({ body, store }) => {

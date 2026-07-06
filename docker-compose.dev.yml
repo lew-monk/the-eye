@@ -133,6 +133,7 @@ services:
       - ./packages/coreference-worker/src:/app/src
       - ./packages/coreference-worker/patterns.yaml:/app/patterns.yaml
       - ./packages/coreference-worker/titles.yaml:/app/titles.yaml
+      - ./packages/coreference-worker/weights.yaml:/app/weights.yaml
       - huggingface_cache:/root/.cache/huggingface
     depends_on:
       redis:

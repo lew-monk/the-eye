@@ -333,7 +333,7 @@ Documents are chunked only when they exceed the embedding model's token limit:
 4. **If a single paragraph exceeds the limit** on its own → split that paragraph by sentence
 5. **If a single sentence still exceeds the limit** (rare) → hard-split at token boundary
 
-Each chunk stores its `chunk_index` and gets a position weight from `weights.yaml` based on its index and the document type.
+Each chunk stores its `chunk_index`. Position weights from `weights.yaml` are reserved for future use — not yet applied at chunk time.
 
 ### Embedding Models
 

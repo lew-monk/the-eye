@@ -1,0 +1,1 @@
+ALTER TABLE "document_chunks" ADD COLUMN "position_weight" real;--> statement-breakpoint

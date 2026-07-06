@@ -54,6 +54,40 @@ def load_titles(path: Path | str) -> Dict[str, List[str]]:
     }
 
 
+def _parse_weight_key(key: str) -> tuple[int, bool]:
+    match = re.match(r"chunk_(\d+)(\+)?$", key)
+    if match:
+        return int(match.group(1)), bool(match.group(2))
+    return 0, False
+
+
+def _resolve_weight(
+    weights: Dict[str, float], chunk_index: int
+) -> float:
+    exact_key = f"chunk_{chunk_index}"
+    if exact_key in weights:
+        return weights[exact_key]
+    fallback_keys = sorted(
+        (k for k in weights if k.endswith("+")),
+        key=lambda k: _parse_weight_key(k)[0],
+        reverse=True,
+    )
+    for key in fallback_keys:
+        threshold, _ = _parse_weight_key(key)
+        if chunk_index >= threshold:
+            return weights[key]
+    return 1.0
+
+
+def load_weights(path: Path | str) -> Dict[str, Any]:
+    with open(path) as f:
+        data = yaml.safe_load(f)
+    return {
+        "default": data.get("default", {}),
+        "per_document_type": data.get("per_document_type", {}),
+    }
+
+
 def pick_canonical(mentions: List[str], nlp=None) -> str:
     cleaned = [m.strip() for m in mentions if m.strip()]
     if not cleaned:
@@ -309,19 +343,30 @@ def _token_count(text: str) -> int:
 def chunk_text(
     text: str,
     max_tokens: int = 512,
+    weights: Optional[Dict[str, Any]] = None,
+    document_type: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     if not text or not text.strip():
-        return [{"chunkIndex": 0, "text": "", "tokenCount": 0}]
+        return [{"chunkIndex": 0, "text": "", "tokenCount": 0, "positionWeight": 1.0}]
 
     raw_chunks = semchunk.chunk(
         text, chunk_size=max_tokens, token_counter=_token_count
     )
+
+    type_weights: Dict[str, float] = {}
+    if weights:
+        doc_weights = weights.get("per_document_type", {}).get(document_type or "")
+        if doc_weights:
+            type_weights = doc_weights
+        else:
+            type_weights = weights.get("default", {})
 
     return [
         {
             "chunkIndex": i,
             "text": c,
             "tokenCount": _token_count(c),
+            "positionWeight": _resolve_weight(type_weights, i),
         }
         for i, c in enumerate(raw_chunks)
     ]

@@ -15,6 +15,7 @@ export abstract class CoreferenceService {
 		return {
 			documentId: document.id,
 			text: content,
+			documentType: document.documentType,
 			textHash: (document as any).textHash || null,
 			fileHash: (document as any).fileHash || null,
 			coreferenceSourceTextHash: corefSourceTextHash,

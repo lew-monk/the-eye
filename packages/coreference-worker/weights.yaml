@@ -1,0 +1,216 @@
+# Chunk position weights for bag-of-chunks similarity scoring.
+# Each chunk gets a weight based on its index and the document type.
+# Unrecognised document types fall back to `default`.
+# Query-time URL params override these values.
+
+version: 1
+
+default:
+  chunk_0: 1.0
+  chunk_1: 0.85
+  chunk_2: 0.7
+  chunk_3: 0.6
+  chunk_4: 0.5
+  chunk_5: 0.45
+  chunk_6: 0.4
+  chunk_7: 0.35
+  chunk_8: 0.3
+  chunk_9: 0.25
+  chunk_10+: 0.2
+
+per_document_type:
+  # Judgments: front-loaded (key holdings up front), steep decay
+  judgment:
+    chunk_0: 1.0
+    chunk_1: 0.85
+    chunk_2: 0.6
+    chunk_3: 0.5
+    chunk_4: 0.4
+    chunk_5: 0.35
+    chunk_6: 0.3
+    chunk_7: 0.25
+    chunk_8: 0.2
+    chunk_9: 0.15
+    chunk_10+: 0.15
+
+  # Court orders: similar to judgments, front-loaded
+  court_order:
+    chunk_0: 1.0
+    chunk_1: 0.85
+    chunk_2: 0.65
+    chunk_3: 0.55
+    chunk_4: 0.45
+    chunk_5: 0.4
+    chunk_6: 0.35
+    chunk_7: 0.3
+    chunk_8: 0.25
+    chunk_9: 0.2
+    chunk_10+: 0.2
+
+  # Contracts: uniformly important throughout, gentle decay
+  contract:
+    chunk_0: 1.0
+    chunk_1: 0.9
+    chunk_2: 0.85
+    chunk_3: 0.8
+    chunk_4: 0.75
+    chunk_5: 0.7
+    chunk_6: 0.65
+    chunk_7: 0.6
+    chunk_8: 0.55
+    chunk_9: 0.5
+    chunk_10+: 0.5
+
+  # Agreements: same curve as contracts
+  agreement:
+    chunk_0: 1.0
+    chunk_1: 0.9
+    chunk_2: 0.85
+    chunk_3: 0.8
+    chunk_4: 0.75
+    chunk_5: 0.7
+    chunk_6: 0.65
+    chunk_7: 0.6
+    chunk_8: 0.55
+    chunk_9: 0.5
+    chunk_10+: 0.5
+
+  # Police reports: front-loaded (who, what, when), moderate decay
+  police_report:
+    chunk_0: 1.0
+    chunk_1: 0.8
+    chunk_2: 0.6
+    chunk_3: 0.5
+    chunk_4: 0.4
+    chunk_5: 0.35
+    chunk_6: 0.3
+    chunk_7: 0.25
+    chunk_8: 0.2
+    chunk_9: 0.2
+    chunk_10+: 0.2
+
+  # Incident reports: similar to police reports
+  incident_report:
+    chunk_0: 1.0
+    chunk_1: 0.8
+    chunk_2: 0.6
+    chunk_3: 0.5
+    chunk_4: 0.4
+    chunk_5: 0.35
+    chunk_6: 0.3
+    chunk_7: 0.25
+    chunk_8: 0.2
+    chunk_9: 0.2
+    chunk_10+: 0.2
+
+  # Witness statements: uniformly relevant throughout, gentle decay
+  witness_statement:
+    chunk_0: 1.0
+    chunk_1: 0.9
+    chunk_2: 0.85
+    chunk_3: 0.8
+    chunk_4: 0.75
+    chunk_5: 0.7
+    chunk_6: 0.65
+    chunk_7: 0.6
+    chunk_8: 0.55
+    chunk_9: 0.5
+    chunk_10+: 0.5
+
+  # Affidavits: similar to witness statements
+  affidavit:
+    chunk_0: 1.0
+    chunk_1: 0.9
+    chunk_2: 0.85
+    chunk_3: 0.8
+    chunk_4: 0.75
+    chunk_5: 0.7
+    chunk_6: 0.65
+    chunk_7: 0.6
+    chunk_8: 0.55
+    chunk_9: 0.5
+    chunk_10+: 0.5
+
+  # Pleadings: front-loaded (claims and causes of action), moderate decay
+  pleading:
+    chunk_0: 1.0
+    chunk_1: 0.85
+    chunk_2: 0.75
+    chunk_3: 0.65
+    chunk_4: 0.55
+    chunk_5: 0.5
+    chunk_6: 0.45
+    chunk_7: 0.4
+    chunk_8: 0.35
+    chunk_9: 0.3
+    chunk_10+: 0.3
+
+  # Motions: front-loaded (relief sought), moderate decay
+  motion:
+    chunk_0: 1.0
+    chunk_1: 0.85
+    chunk_2: 0.75
+    chunk_3: 0.65
+    chunk_4: 0.55
+    chunk_5: 0.5
+    chunk_6: 0.45
+    chunk_7: 0.4
+    chunk_8: 0.35
+    chunk_9: 0.3
+    chunk_10+: 0.3
+
+  # Briefs: front-loaded (argument summary), moderate decay
+  brief:
+    chunk_0: 1.0
+    chunk_1: 0.85
+    chunk_2: 0.75
+    chunk_3: 0.65
+    chunk_4: 0.55
+    chunk_5: 0.5
+    chunk_6: 0.45
+    chunk_7: 0.4
+    chunk_8: 0.35
+    chunk_9: 0.3
+    chunk_10+: 0.3
+
+  # Transcripts: uniform throughout, very gentle decay
+  transcript:
+    chunk_0: 1.0
+    chunk_1: 0.95
+    chunk_2: 0.9
+    chunk_3: 0.85
+    chunk_4: 0.8
+    chunk_5: 0.75
+    chunk_6: 0.7
+    chunk_7: 0.65
+    chunk_8: 0.6
+    chunk_9: 0.55
+    chunk_10+: 0.5
+
+  # Administrative decisions: like judgments, front-loaded
+  administrative_decision:
+    chunk_0: 1.0
+    chunk_1: 0.85
+    chunk_2: 0.6
+    chunk_3: 0.5
+    chunk_4: 0.4
+    chunk_5: 0.35
+    chunk_6: 0.3
+    chunk_7: 0.25
+    chunk_8: 0.2
+    chunk_9: 0.15
+    chunk_10+: 0.15
+
+  # Regulatory filings: disclosure-heavy, uniform, gentle decay
+  regulatory_filing:
+    chunk_0: 1.0
+    chunk_1: 0.9
+    chunk_2: 0.85
+    chunk_3: 0.8
+    chunk_4: 0.75
+    chunk_5: 0.7
+    chunk_6: 0.65
+    chunk_7: 0.6
+    chunk_8: 0.55
+    chunk_9: 0.5
+    chunk_10+: 0.5
