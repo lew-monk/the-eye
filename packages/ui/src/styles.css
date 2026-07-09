@@ -1,59 +1,44 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
-  }
+@custom-variant dark (&:is(.dark *));
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-  }
+@theme {
+	--color-background: #0f131c;
+	--color-foreground: #dfe2ef;
+	--color-card: #1c1f29;
+	--color-card-foreground: #dfe2ef;
+	--color-popover: #1c1f29;
+	--color-popover-foreground: #dfe2ef;
+	--color-primary: #4df6e0;
+	--color-primary-foreground: #003731;
+	--color-secondary: #adc8f5;
+	--color-secondary-foreground: #133155;
+	--color-muted: #31353f;
+	--color-muted-foreground: #849490;
+	--color-accent: #262a34;
+	--color-accent-foreground: #dfe2ef;
+	--color-destructive: #ffb4ab;
+	--color-destructive-foreground: #690005;
+	--color-border: #3b4a47;
+	--color-input: #3b4a47;
+	--color-ring: #23dec9;
+	--color-outline: #849490;
+	--color-outline-variant: #3b4a47;
+	--color-surface-dim: #0f131c;
+	--color-surface-container-lowest: #0a0e17;
+	--color-surface-container-low: #181b25;
+	--color-surface-container: #1c1f29;
+	--color-surface-container-high: #262a34;
+	--color-surface-container-highest: #31353f;
+	--radius: 0.5rem;
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+	* {
+		@apply border-border;
+	}
+	body {
+		@apply bg-background text-foreground;
+	}
 }

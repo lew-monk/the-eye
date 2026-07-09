@@ -145,6 +145,19 @@ export class DocumentQueue {
 		})
 	}
 
+	async addDocumentToCorefQueue(documentId: number, textHash: string): Promise<void> {
+		const dedupId = `${documentId}:${textHash}`
+		await this.corefQueue.add('resolve-coreference', {
+			documentId,
+			textHash,
+			modelVersion: process.env.COREF_MODEL_VERSION || 'fastcoref',
+		}, {
+			attempts: 3,
+			backoff: { type: 'exponential', delay: 5000 },
+			deduplication: { id: dedupId, ttl: 3600000 } as any,
+		})
+	}
+
 	private setupEventHandlers(): void {
 		this.events.on('completed', async ({ jobId }) => {
 			console.log(`Job ${jobId} completed successfully`)

@@ -340,6 +340,41 @@ def _token_count(text: str) -> int:
     return len(_get_encoding().encode(text))
 
 
+HEADROOM_FACTOR: float = 0.9
+
+
+def _paragraph_chunk(text: str, max_tokens: int) -> List[str]:
+    paragraphs = re.split(r"\n\n+", text)
+    chunks: List[str] = []
+    current: List[str] = []
+    current_tokens: int = 0
+
+    for para in paragraphs:
+        stripped = para.strip()
+        if not stripped:
+            continue
+        para_tokens = _token_count(stripped)
+
+        if para_tokens > max_tokens:
+            if current:
+                chunks.append("\n\n".join(current))
+                current = []
+                current_tokens = 0
+            chunks.extend(semchunk.chunk(stripped, chunk_size=max_tokens, token_counter=_token_count))
+        elif current_tokens + para_tokens <= max_tokens:
+            current.append(stripped)
+            current_tokens += para_tokens
+        else:
+            chunks.append("\n\n".join(current))
+            current = [stripped]
+            current_tokens = para_tokens
+
+    if current:
+        chunks.append("\n\n".join(current))
+
+    return chunks
+
+
 def chunk_text(
     text: str,
     max_tokens: int = 512,
@@ -349,9 +384,9 @@ def chunk_text(
     if not text or not text.strip():
         return [{"chunkIndex": 0, "text": "", "tokenCount": 0, "positionWeight": 1.0}]
 
-    raw_chunks = semchunk.chunk(
-        text, chunk_size=max_tokens, token_counter=_token_count
-    )
+    effective_max = int(max_tokens * HEADROOM_FACTOR)
+
+    raw_chunks = _paragraph_chunk(text, effective_max)
 
     type_weights: Dict[str, float] = {}
     if weights:

@@ -41,6 +41,13 @@ export class CoreferenceRepository extends BaseRepository<CoreferenceResult, New
 		super(coreferenceResults)
 	}
 
+	async deleteByDocumentId(documentId: number): Promise<boolean> {
+		const { data } = await this.findMany([eq(coreferenceResults.documentId, documentId)], { limit: 1 })
+		const result = data[0]
+		if (!result) return false
+		return this.deleteById(result.id)
+	}
+
 	async store(documentId: number, data: StoreCoreferenceInput): Promise<CoreferenceResult> {
 		const result = await this.create({
 			documentId,
