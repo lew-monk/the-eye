@@ -1,10 +1,9 @@
 import { bigint, boolean, integer, jsonb, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 
-// API Management
 export type Permission = {
-	service: string // e.g. api
-	resource: string // e.g. documents,ocr
-	actions: string[] // e.g. create,read,update,delete
+	service: string
+	resource: string
+	actions: string[]
 	conditions?: {
 		maxFileSize?: number
 		maxFileCount?: number
@@ -17,24 +16,12 @@ export type Permission = {
 }
 
 export type RateLimit = {
-	resource: string, // e.g. Service and action being accessed
-	windowMs: number, // Time window in milliseconds
-	maxRequests: number, // Maximum number of requests allowed in the window
-	message: string, // Error message to return if rate limit is exceeded
-	maxBytes?: number, // Maximum number of bytes allowed in the window
+	resource: string
+	windowMs: number
+	maxRequests: number
+	message: string
+	maxBytes?: number
 }
-
-export const apiUsers = pgTable('api_users', {
-	id: serial('id').primaryKey(),
-	username: text('username').notNull(),
-	email: text('email').notNull(),
-	subscriptionTier: text('subscription_tier'),
-	organizationId: text('organization'),
-	metadata: jsonb('metadata').$type<Record<string, any>>(),
-	createdAt: timestamp('created_at').defaultNow(),
-	updatedAt: timestamp('updated_at').defaultNow(),
-})
-
 
 export const apiKeys = pgTable('api_keys', {
 	id: serial('id').primaryKey(),
@@ -48,8 +35,6 @@ export const apiKeys = pgTable('api_keys', {
 	expiresAt: timestamp('expires_at').notNull(),
 	lastUsedAt: timestamp('last_used_at').defaultNow(),
 	isActive: boolean('is_active').default(true),
-	// createdAt: timestamp('created_at').defaultNow(),
-	// updatedAt: timestamp('updated_at').defaultNow(),
 	allowedIps: text('allowed_ips').array(),
 	allowedDomains: text('allowed_domains').array(),
 })
@@ -75,4 +60,3 @@ export const apiKeyUsages = pgTable('api_key_usages', {
 export type ApiKey = typeof apiKeys.$inferSelect
 export type ApiKeyUsage = typeof apiKeyUsages.$inferSelect
 export type ApiKeyUsageInsert = typeof apiKeyUsages.$inferInsert
-export type ApiKeyUser = typeof apiUsers.$inferSelect

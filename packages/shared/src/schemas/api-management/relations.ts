@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm"
-import { apiKeys, apiKeyUsages, apiUsers } from "./api-management"
+import { apiKeys, apiKeyUsages } from "./api-management"
+import { users } from "../auth"
 
 export const apiKeyUsagesRelations = relations(apiKeyUsages, ({ one }) => ({
 	apiKeyUsages: one(apiKeys, {
@@ -9,8 +10,8 @@ export const apiKeyUsagesRelations = relations(apiKeyUsages, ({ one }) => ({
 }))
 
 export const apiKeysOwnerRelations = relations(apiKeys, ({ one }) => ({
-	owner: one(apiUsers, {
+	owner: one(users, {
 		fields: [apiKeys.userId],
-		references: [apiUsers.id],
+		references: [users.id],
 	}),
 }))

@@ -16,6 +16,7 @@ const config = defineConfig({
   resolve: {
     alias: {
       '@workspace/ui': path.resolve(__dirname, '../../packages/ui/src'),
+      '@workspace/shared': path.resolve(__dirname, '../../packages/shared/src'),
     },
   },
   plugins: [

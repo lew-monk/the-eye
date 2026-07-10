@@ -14,11 +14,11 @@ import {
 import { authClient } from '#/lib/auth-client'
 import { ScanLineIcon } from '../auth'
 
-export const Route = createFileRoute('/auth/login')({
-  component: LoginRoute,
+export const Route = createFileRoute('/auth/signup')({
+  component: SignupRoute,
 })
 
-const loginSchema = z.object({
+const signupBaseSchema = z.object({
   name: z.string().min(1, 'Name is required').transform((s) => s.trim()),
   email: z
     .string()
@@ -29,23 +29,38 @@ const loginSchema = z.object({
     .string()
     .min(1, 'Password is required')
     .min(8, 'Password must be at least 8 characters'),
+  confirmPassword: z.string().min(1, 'Please confirm your password'),
 })
 
-function LoginForm() {
+const signupSchema = signupBaseSchema.refine(
+  (data) => data.password === data.confirmPassword,
+  {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  },
+)
+
+function SignupForm() {
   const [authError, setAuthError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
   const form = useForm({
     defaultValues: {
+      name: '',
       email: '',
       password: '',
+      confirmPassword: '',
+    },
+    validators: {
+      onSubmit: signupSchema,
     },
     onSubmit: async ({ value }) => {
       setAuthError(null)
       setLoading(true)
 
-      const { error } = await authClient.signIn.email({
+      const { error } = await authClient.signUp.email({
+        name: value.name,
         email: value.email,
         password: value.password,
       })
@@ -53,7 +68,7 @@ function LoginForm() {
       setLoading(false)
 
       if (error) {
-        setAuthError(error.message || 'Authentication failed')
+        setAuthError(error.message || 'Sign up failed')
         return
       }
 
@@ -64,9 +79,33 @@ function LoginForm() {
   return (
     <Form form={form} className="space-y-5">
       <FormField
+        name="name"
+        validators={{
+          onChange: signupBaseSchema.shape.name,
+        }}
+      >
+        <FormLabel className="text-left">OPERATIVE_NAME</FormLabel>
+        <FormControl>
+          {(field) => (
+            <InputField
+              type="text"
+              placeholder="Jane Doe"
+              value={field.state.value as string}
+              onChange={(e) => field.handleChange(e.target.value)}
+              onBlur={field.handleBlur}
+              error={getErrorMessage(field.state.meta.errors[0]) ?? undefined}
+              icon={
+                <span className="material-symbols-outlined text-sm">badge</span>
+              }
+            />
+          )}
+        </FormControl>
+      </FormField>
+
+      <FormField
         name="email"
         validators={{
-          onChange: loginSchema.shape.email,
+          onChange: signupBaseSchema.shape.email,
         }}
       >
         <FormLabel className="text-left">EMAIL</FormLabel>
@@ -90,7 +129,7 @@ function LoginForm() {
       <FormField
         name="password"
         validators={{
-          onChange: loginSchema.shape.password,
+          onChange: signupBaseSchema.shape.password,
         }}
       >
         <FormLabel className="text-left">PASSWORD</FormLabel>
@@ -105,6 +144,32 @@ function LoginForm() {
               error={getErrorMessage(field.state.meta.errors[0]) ?? undefined}
               icon={
                 <span className="material-symbols-outlined text-sm">lock</span>
+              }
+            />
+          )}
+        </FormControl>
+      </FormField>
+
+      <FormField
+        name="confirmPassword"
+        validators={{
+          onChange: signupBaseSchema.shape.confirmPassword,
+        }}
+      >
+        <FormLabel className="text-left">CONFIRM_PASSWORD</FormLabel>
+        <FormControl>
+          {(field) => (
+            <InputField
+              type="password"
+              placeholder="••••••••••••"
+              value={field.state.value as string}
+              onChange={(e) => field.handleChange(e.target.value)}
+              onBlur={field.handleBlur}
+              error={getErrorMessage(field.state.meta.errors[0]) ?? undefined}
+              icon={
+                <span className="material-symbols-outlined text-sm">
+                  lock_reset
+                </span>
               }
             />
           )}
@@ -126,7 +191,7 @@ function LoginForm() {
             className="w-full"
             disabled={!canSubmit || loading || isSubmitting}
           >
-            {loading || isSubmitting ? 'AUTHENTICATING...' : 'AUTHENTICATE'}
+            {loading || isSubmitting ? 'REGISTERING...' : 'REGISTER'}
           </Button>
         )}
       </form.Subscribe>
@@ -134,36 +199,36 @@ function LoginForm() {
   )
 }
 
-function LoginRoute() {
+function SignupRoute() {
   return (
     <>
-      <ScanLineIcon symbol="fingerprint" />
+      <ScanLineIcon symbol="person_add" />
 
       <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary/60">
-        SECURE ACCESS PORTAL
+        NEW OPERATIVE REGISTRATION
       </span>
 
       <h1 className="font-mono text-4xl font-bold tracking-tight text-foreground leading-tight">
-        DEPLOY_YOUR
+        REGISTER_YOUR
         <br />
-        PARALEGAL_OPS
+        CREDENTIALS
       </h1>
 
       <p className="font-mono text-sm text-muted-foreground leading-relaxed max-w-sm">
-        Authenticate to access the case intelligence platform. All sessions are
-        encrypted end-to-end.
+        Create credentials to access the case intelligence platform. All
+        accounts are encrypted end-to-end.
       </p>
 
       <div className="w-full pt-2">
-        <LoginForm />
+        <SignupForm />
       </div>
 
       <div className="text-center">
         <Link
-          to="/auth/signup"
+          to="/auth/login"
           className="font-mono text-xs uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors duration-500"
         >
-          REQUEST_ACCESS_CREDENTIALS
+          ALREADY_HAVE_ACCESS
         </Link>
       </div>
     </>
