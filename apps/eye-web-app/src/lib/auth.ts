@@ -1,7 +1,8 @@
 import { betterAuth } from 'better-auth'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { db, users, sessions, accounts, verifications } from '@workspace/shared'
+import { db } from '@workspace/shared'
+import { users, sessions, accounts, verifications } from '@workspace/shared'
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -9,7 +10,7 @@ export const auth = betterAuth({
     schema: { users, sessions, accounts, verifications },
     usePlural: true,
   }),
-  baseURL: "http://localhost:3002",
+  baseURL: "http://localhost:3000",
   user: {
     additionalFields: {
       subscriptionTier: {

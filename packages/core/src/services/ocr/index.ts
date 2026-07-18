@@ -1,4 +1,5 @@
 export * from './azure-client'
 export * from './document-processor'
 export * from './model-manager'
+export * from './pdf-chunker'
 export * from './types'

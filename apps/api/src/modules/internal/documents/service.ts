@@ -1,4 +1,4 @@
-import { DocumentQueue } from '@workspace/core'
+import { getDocumentQueue } from '@workspace/core'
 import { documentRepository, chunkRepository, participantRepository, coreferenceRepository } from '@workspace/shared'
 
 export abstract class DocumentsService {
@@ -30,8 +30,7 @@ export abstract class DocumentsService {
 
 		const textHash = (document as any).textHash
 		if (textHash) {
-			const queue = new DocumentQueue()
-			await queue.addDocumentToCorefQueue(documentId, textHash)
+			await getDocumentQueue().addDocumentToCorefQueue(documentId, textHash)
 		}
 
 		return { success: true, documentId }

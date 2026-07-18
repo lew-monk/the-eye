@@ -1,4 +1,4 @@
-import { DocumentQueue } from '@workspace/core'
+import { getDocumentQueue } from '@workspace/core'
 import { documentRepository, chunkRepository, participantRepository } from '@workspace/shared'
 import type { SimilarQuery, SimilarCaseResult } from '@workspace/shared'
 
@@ -12,7 +12,6 @@ export abstract class ChunksService {
 		normalizedText?: string,
 	) {
 		const document = await documentRepository.findById(documentId)
-		const queue = new DocumentQueue()
 		if (!document) return null
 
 		const rows = chunks.map((c) => ({
@@ -47,7 +46,7 @@ export abstract class ChunksService {
 			},
 		})
 
-		await queue.addDocumentChunkToQueue(documentId)
+		await getDocumentQueue().addDocumentChunkToQueue(documentId)
 
 		return { count: inserted.length }
 	}

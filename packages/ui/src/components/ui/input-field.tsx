@@ -27,7 +27,7 @@ const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(
           <input
             type={type}
             className={cn(
-              "flex h-10 w-full bg-surface-container-low border-b border-primary/30 px-3 py-2 font-mono text-sm text-foreground placeholder:text-outline/30 focus:border-primary focus:outline-none transition-colors",
+              "flex h-10 w-full bg-surface-container-low border-b border-primary/30 px-3 py-2 font-mono text-sm text-foreground placeholder:text-outline focus:border-primary focus:outline-none transition-colors",
               icon && "pl-10",
               error && "border-destructive",
               className

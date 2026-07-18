@@ -8,9 +8,9 @@ export class DocumentRepository extends BaseRepository<Document, NewDocument> {
 		super(documents)
 	}
 
-	// Override to use uploadedAt as default sort field
+	// Override to use createdAt as default sort field
 	override async findMany(conditions: any[] = [], options: any = {}) {
-		const { orderField = 'uploadedAt', ...restOptions } = options
+		const { orderField = 'createdAt', ...restOptions } = options
 		return super.findMany(conditions, { ...restOptions, orderField })
 	}
 
@@ -30,6 +30,11 @@ export class DocumentRepository extends BaseRepository<Document, NewDocument> {
 		return result.data
 	}
 
+	async findByCaseId(caseId: number): Promise<Document[]> {
+		const result = await this.findMany([eq(documents.caseId, caseId)], { limit: 1000 })
+		return result.data
+	}
+
 	async findByFileHash(fileHash: string): Promise<Document | null> {
 		const [result] = await this.db
 			.select()
@@ -45,7 +50,7 @@ export class DocumentRepository extends BaseRepository<Document, NewDocument> {
 
 	async updateStatus(id: number, status: string, errorMessage?: string): Promise<Document | null> {
 		const updates: Partial<Document> = { status }
-		if (status === 'processed') {
+		if (status === 'completed' || status === 'processed') {
 			updates.processedAt = new Date()
 		}
 		if (errorMessage) {
@@ -64,7 +69,7 @@ export class DocumentRepository extends BaseRepository<Document, NewDocument> {
 			.select()
 			.from(processingLogs)
 			.where(eq(processingLogs.documentId, documentId))
-			.orderBy(processingLogs.timestamp)
+			.orderBy(processingLogs.createdAt)
 	}
 
 	async getProcessingStats(): Promise<{

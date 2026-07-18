@@ -20,7 +20,7 @@
     "bullmq": "^4.0.0",
     "date-fns": "^2.30.0",
     "drizzle-kit": "^0.31.8",
-    "drizzle-orm": "^0.45.1",
+    "drizzle-orm": "^0.45.2",
     "ioredis": "^5.0.0",
     "postgres": "^3.0.0",
     "zod": "^3.22.0"

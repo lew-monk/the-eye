@@ -1,6 +1,7 @@
 import { DocumentRepository } from '@workspace/shared'
 import { ProcessingOptions, DocumentExtractionResult } from './types'
 import { AzureOCRService, OCRResult } from '../..'
+import { DocumentStatus, pipelineLog } from '../../utils/pipeline-log'
 
 export class DocumentProcessor {
 	private azureService = new AzureOCRService()
@@ -8,27 +9,39 @@ export class DocumentProcessor {
 
 	async processDocument(fileBuffer: Buffer, options: ProcessingOptions): Promise<DocumentExtractionResult> {
 		const startTime = Date.now()
+		const documentId = options.documentId!
 
 		try {
-			// Process with Azure (this will update the document status)
-			const result: OCRResult = await this.azureService.processDocumentFromBuffer(options.documentId!, fileBuffer)
+			pipelineLog(documentId, 'processor_started', {
+				bytes: fileBuffer.byteLength,
+				documentType: options.documentType,
+			})
 
-			// Transform to our result format
+			const result: OCRResult = await this.azureService.processDocumentFromBuffer(documentId, fileBuffer)
+
 			const extractionResult: DocumentExtractionResult = {
 				content: result.content,
 				structured: result.structuredData || {},
 				confidence: result.confidence,
 				metadata: {
 					processedAt: new Date(),
-					processingTime: Date.now() - startTime
+					processingTime: Date.now() - startTime,
 				},
-				extractedFields: result.extractedFields
+				...(result.extractedFields ? { extractedFields: result.extractedFields } : {}),
 			}
+
+			pipelineLog(documentId, 'processor_finished', {
+				ms: Date.now() - startTime,
+				contentLength: result.content.length,
+				confidence: result.confidence,
+			})
 
 			return extractionResult
 		} catch (error) {
-			// Update status to failed if not already
-			await this.docRepo.updateById(options.documentId!, { status: 'failed', errorMessage: error instanceof Error ? error.message : 'Unknown error' })
+			await this.docRepo.updateById(documentId, {
+				status: DocumentStatus.FAILED,
+				errorMessage: error instanceof Error ? error.message : 'Unknown error',
+			})
 			throw error
 		}
 	}

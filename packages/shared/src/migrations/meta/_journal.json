@@ -57,6 +57,13 @@
       "when": 1750775500000,
       "tag": "0007_add_better_auth_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1783693742657,
+      "tag": "0008_dizzy_deathbird",
+      "breakpoints": true
     }
   ]
 }

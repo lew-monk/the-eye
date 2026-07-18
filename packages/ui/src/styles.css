@@ -23,8 +23,9 @@
 	--color-border: #3b4a47;
 	--color-input: #3b4a47;
 	--color-ring: #23dec9;
-	--color-outline: #849490;
-	--color-outline-variant: #3b4a47;
+  --color-outline: #849490;
+  --color-outline-variant: #3b4a47;
+  --color-role-other: #966cf6;
 	--color-surface-dim: #0f131c;
 	--color-surface-container-lowest: #0a0e17;
 	--color-surface-container-low: #181b25;
@@ -32,6 +33,10 @@
 	--color-surface-container-high: #262a34;
 	--color-surface-container-highest: #31353f;
 	--radius: 0.5rem;
+	--font-size-meta-sm: 0.4375rem; /* 7px — labels, annotations */
+	--font-size-meta: 0.5rem;      /* 8px — metadata, secondary */
+	--font-size-body: 0.625rem;    /* 10px — body text, buttons */
+	--font-size-body-lg: 0.75rem;  /* 12px — headings, emphasis */
 }
 
 @layer base {
@@ -40,5 +45,24 @@
 	}
 	body {
 		@apply bg-background text-foreground;
+	}
+
+	::-webkit-scrollbar {
+		width: 12px;
+		height: 12px;
+	}
+	::-webkit-scrollbar-track {
+		background: transparent;
+	}
+	::-webkit-scrollbar-thumb {
+		background: rgba(77, 246, 224, 0.3);
+		border-radius: 6px;
+		border: 3px solid transparent;
+		background-clip: padding-box;
+		min-height: 52px;
+	}
+	::-webkit-scrollbar-thumb:hover {
+		background: rgba(77, 246, 224, 0.5);
+		background-clip: padding-box;
 	}
 }

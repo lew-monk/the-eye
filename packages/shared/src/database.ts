@@ -7,7 +7,7 @@ export interface DatabaseConfig {
 }
 
 export function getDatabaseConfig(): DatabaseConfig {
-	const connectionString = process.env.DATABASE_URL || 'postgresql://legal_user:legal_pass@localhost:5432/legal_docs'
+	const connectionString = process.env.DATABASE_URL || 'postgresql://legal_user:legal_pass@postgres:5432/legal_docs'
 
 	return {
 		connectionString,

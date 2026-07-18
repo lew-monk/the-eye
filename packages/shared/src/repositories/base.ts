@@ -67,9 +67,8 @@ export abstract class BaseRepository<T extends BaseEntity, TInsert = Omit<T, 'id
 		const totalPages = Math.ceil(count / limit)
 
 		// Build order clause
-		const orderClause = orderBy === 'desc'
-			? desc((this.table as any)[orderField] || (this.table as any).createdAt)
-			: asc((this.table as any)[orderField] || (this.table as any).createdAt)
+		const field = (this.table as any)[orderField] ?? (this.table as any).id
+		const orderClause = orderBy === 'desc' ? desc(field) : asc(field)
 
 		// Calculate offset
 		const offset = (page - 1) * limit

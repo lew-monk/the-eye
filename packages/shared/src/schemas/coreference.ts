@@ -28,6 +28,8 @@ export const coreferenceClusters = pgTable('coreference_clusters', {
 		.notNull()
 		.references(() => coreferenceResults.id, { onDelete: 'cascade' }),
 	clusterIndex: integer('cluster_index').notNull(),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
 	resultIdx: index('idx_coref_clusters_result_id').on(table.resultId),
 }))
@@ -40,6 +42,8 @@ export const coreferenceMentions = pgTable('coreference_mentions', {
 	text: text('text').notNull(),
 	startPos: integer('start_pos').notNull(),
 	endPos: integer('end_pos').notNull(),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
 	clusterIdx: index('idx_coref_mentions_cluster_id').on(table.clusterId),
 }))

@@ -32,7 +32,6 @@ def _extract_clusters(doc) -> Tuple[List[List[str]], List[Dict[str, Any]]]:
                 "cluster_id": cluster_id,
             })
         clusters.append(cluster_texts)
-    print(clusters)
 
     return clusters, mentions
 

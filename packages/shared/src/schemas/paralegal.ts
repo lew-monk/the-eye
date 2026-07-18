@@ -33,6 +33,8 @@ export const participants = pgTable('participants', {
 	clusterId: integer('cluster_id'),
 	relevanceScore: real('relevance_score').default(0),
 	extractionVersion: integer('extraction_version').default(1),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
 	documentIdx: index('idx_participants_document_id').on(table.documentId),
 	normalizedNameIdx: index('idx_participants_normalized_name').on(table.normalizedName),
@@ -55,6 +57,7 @@ export const documentChunks = pgTable('document_chunks', {
 	tokenCount: integer('token_count'),
 	positionWeight: real('position_weight'),
 	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
 	docChunkIdx: uniqueIndex('idx_chunks_document_chunk').on(table.documentId, table.chunkIndex),
 	documentIdx: index('idx_chunks_document_id').on(table.documentId),

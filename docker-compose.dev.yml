@@ -74,16 +74,17 @@ services:
       - NODE_ENV=development
     volumes:
       - .:/app
-      - /app/node_modules
-      - /app/apps/web/node_modules
-      - /app/packages/*/node_modules
-      - /app/packages/*/dist
+      - /app/apps/eye-web-app/node_modules
+      - /app/packages/shared/node_modules
+      - /app/packages/ui/node_modules
+      - /app/packages/core/node_modules
+      - /app/packages/workers/node_modules
     depends_on:
       - api
     working_dir: /app
     networks:
       - the-eye-network
-    command: sh -c "cd apps/web && bun run dev --host 0.0.0.0"
+    command: sh -c "cd apps/eye-web-app && bun install && bun run dev --host 0.0.0.0"
     logging:
       driver: json-file
       options:
@@ -114,7 +115,7 @@ services:
     working_dir: /app
     networks:
       - the-eye-network
-    command: sh -c "bun run watch:packages & cd apps/api && bun run dev"
+    command: sh -c "bun install && bun run watch:packages & cd apps/api && bun run dev"
     logging:
       driver: json-file
       options:

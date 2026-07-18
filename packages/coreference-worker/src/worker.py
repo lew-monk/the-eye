@@ -73,6 +73,14 @@ def _coref_chunk_text(text: str, max_chars: int) -> Dict[str, Any]:
     return {"chunks": chunks, "chunked": True}
 
 
+def _doc_log(document_id: int, stage: str, **details: Any) -> None:
+    """Console stage log matching TS pipeline format: [DOC n] stage {...}"""
+    if details:
+        print(f"[DOC {document_id}] {stage} {details}", flush=True)
+    else:
+        print(f"[DOC {document_id}] {stage}", flush=True)
+
+
 def post_participants(document_id: int, participants: List[Dict[str, Any]]) -> None:
     url = f"{API_BASE_URL}/internal/documents/{document_id}/participants"
     payload = {
@@ -104,111 +112,179 @@ def post_chunks(
 
 
 async def process_job(job, job_token) -> Optional[Dict[str, Any]]:
-    print("\n" + "=" * 60)
-    print("📥 [JOB RECEIVED] New job received!")
-    print("=" * 60)
-    print(f"🔍 [JOB DATA] Raw job object type: {type(job)}")
-    print(f"🔍 [JOB DATA] Job keys: {job.keys() if isinstance(job, dict) else 'N/A'}")
-    
     # Handle both dict (manual test) and BullMQ Job object
-    job_data = job.get('data') if isinstance(job, dict) else job.data
-    print(f"🔍 [JOB DATA] Job data: {job_data}")
-    
+    job_data = job.get("data") if isinstance(job, dict) else job.data
     document_id = int(job_data.get("documentId"))
     text_hash = job_data.get("textHash")
-    
-    print(f"📄 [PROCESSING] Document ID: {document_id}")
-    print(f"📄 [PROCESSING] Text hash: {text_hash}")
-    print("=" * 60)
+    job_started = time.time()
 
-    meta = fetch_extracted_text(document_id)
-    extracted_text = meta.get("text", "")
-    document_type = meta.get("documentType", "")
-    existing_source_hash = meta.get("coreferenceSourceTextHash")
-
-    if not extracted_text:
-        return {"skipped": True, "reason": "empty_text"}
-
-    if existing_source_hash and text_hash and existing_source_hash == text_hash:
-        return {"skipped": True, "reason": "already_processed"}
-
-    pipeline = NLP
-    if pipeline is None:
-        raise RuntimeError("NLP pipeline not initialized")
-
-    start = time.time()
-    coref_chunk_info = _coref_chunk_text(extracted_text, COREF_MAX_CHARS)
-    text_chunks = coref_chunk_info["chunks"]
-
-    resolved_parts = []
-    clusters = []
-    mentions = []
-
-    for chunk in text_chunks:
-        result = resolve_coref(pipeline, chunk)
-        resolved_parts.append(result.resolved_text)
-        clusters.extend(result.clusters)
-        mentions.extend(result.mentions)
-
-    elapsed_ms = int((time.time() - start) * 1000)
-
-    resolved_text = "\n".join(resolved_parts)
-
-    payload = {
-        "resolved_text": resolved_text,
-        "clusters": clusters,
-        "mentions": mentions,
-        "model": COREF_MODEL_NAME,
-        "model_version": COREF_MODEL_VERSION,
-        "source_text_hash": text_hash or "",
-        "processed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "processing_time_ms": elapsed_ms,
-        "input_char_count": len(extracted_text),
-        "chunked": coref_chunk_info["chunked"],
-        "chunk_size": COREF_MAX_CHARS,
-        "chunk_count": len(text_chunks),
-    }
-    print(payload)
-
-    print(f"📤 [POSTING] Posting coref results to API for document {document_id}")
-    try:
-        post_coref_result(document_id, payload)
-        print(f"✅ [POSTED] Coref results posted successfully to API")
-    except Exception as e:
-        print(f"❌ [POST ERROR] Failed to post coref results to API: {e}")
-        raise
-
-    participants = extract_participants(clusters, mentions, resolved_text, PATTERNS, TITLES, NLP)
-    print(f"👤 [PARTICIPANTS] Extracted {len(participants)} participants")
-
-    if participants:
-        try:
-            post_participants(document_id, participants)
-            print(f"✅ [POSTED] Participants posted successfully to API")
-        except Exception as e:
-            print(f"❌ [POST ERROR] Failed to post participants: {e}")
-            raise
-
-    normalized_text = normalize_text(resolved_text, participants, mentions)
-    print(f"📝 [NORMALIZE] Text normalized ({len(normalized_text)} chars)")
-
-    paralegal_chunks = paralegal_chunk(
-        normalized_text, PARALEGAL_CHUNK_MAX_TOKENS,
-        weights=WEIGHTS, document_type=document_type,
+    _doc_log(
+        document_id,
+        "coref_started",
+        textHash=text_hash,
+        model=COREF_MODEL_NAME,
+        architecture=COREF_MODEL_ARCHITECTURE,
+        maxChars=COREF_MAX_CHARS,
     )
-    print(f"🧩 [CHUNKS] Generated {len(paralegal_chunks)} chunks")
 
-    if paralegal_chunks:
+    try:
+        _doc_log(document_id, "coref_fetching_text")
+        meta = fetch_extracted_text(document_id)
+        extracted_text = meta.get("text", "")
+        document_type = meta.get("documentType", "")
+        existing_source_hash = meta.get("coreferenceSourceTextHash")
+
+        _doc_log(
+            document_id,
+            "coref_fetched",
+            chars=len(extracted_text),
+            documentType=document_type or None,
+            hasExistingCoref=bool(existing_source_hash),
+        )
+
+        if not extracted_text:
+            _doc_log(document_id, "coref_skipped", reason="empty_text")
+            return {"skipped": True, "reason": "empty_text"}
+
+        if existing_source_hash and text_hash and existing_source_hash == text_hash:
+            _doc_log(document_id, "coref_skipped", reason="already_processed")
+            return {"skipped": True, "reason": "already_processed"}
+
+        pipeline = NLP
+        if pipeline is None:
+            raise RuntimeError("NLP pipeline not initialized")
+
+        coref_chunk_info = _coref_chunk_text(extracted_text, COREF_MAX_CHARS)
+        text_chunks = coref_chunk_info["chunks"]
+        chunk_count = len(text_chunks)
+
+        _doc_log(
+            document_id,
+            "coref_chunking",
+            chunked=coref_chunk_info["chunked"],
+            chunkCount=chunk_count,
+            chunkSize=COREF_MAX_CHARS,
+            inputChars=len(extracted_text),
+        )
+
+        resolved_parts = []
+        clusters = []
+        mentions = []
+
+        inference_started = time.time()
+        _doc_log(
+            document_id,
+            "coref_inference_started",
+            chunkCount=chunk_count,
+            note="CPU inference can take many minutes on large docs",
+        )
+
+        for idx, chunk in enumerate(text_chunks, start=1):
+            chunk_started = time.time()
+            _doc_log(
+                document_id,
+                "coref_inference_progress",
+                chunk=idx,
+                of=chunk_count,
+                chunkChars=len(chunk),
+                status="running",
+            )
+            result = resolve_coref(pipeline, chunk)
+            chunk_ms = int((time.time() - chunk_started) * 1000)
+            resolved_parts.append(result.resolved_text)
+            clusters.extend(result.clusters)
+            mentions.extend(result.mentions)
+            _doc_log(
+                document_id,
+                "coref_inference_progress",
+                chunk=idx,
+                of=chunk_count,
+                chunkChars=len(chunk),
+                status="done",
+                ms=chunk_ms,
+                clusters=len(result.clusters),
+                mentions=len(result.mentions),
+            )
+
+        elapsed_ms = int((time.time() - inference_started) * 1000)
+        resolved_text = "\n".join(resolved_parts)
+
+        _doc_log(
+            document_id,
+            "coref_inference_done",
+            ms=elapsed_ms,
+            clusters=len(clusters),
+            mentions=len(mentions),
+            resolvedChars=len(resolved_text),
+        )
+
+        payload = {
+            "resolved_text": resolved_text,
+            "clusters": clusters,
+            "mentions": mentions,
+            "model": COREF_MODEL_NAME,
+            "model_version": COREF_MODEL_VERSION,
+            "source_text_hash": text_hash or "",
+            "processed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "processing_time_ms": elapsed_ms,
+            "input_char_count": len(extracted_text),
+            "chunked": coref_chunk_info["chunked"],
+            "chunk_size": COREF_MAX_CHARS,
+            "chunk_count": chunk_count,
+        }
+
+        _doc_log(document_id, "coref_posting", clusters=len(clusters), mentions=len(mentions))
         try:
-            post_chunks(document_id, paralegal_chunks, normalized_text)
-            print(f"✅ [POSTED] Chunks + normalized text posted successfully to API")
+            post_coref_result(document_id, payload)
+            _doc_log(document_id, "coref_completed", ms=elapsed_ms)
         except Exception as e:
-            print(f"❌ [POST ERROR] Failed to post chunks: {e}")
+            _doc_log(document_id, "coref_failed", stage="post_coref", error=str(e))
             raise
-    
-    print(f"✅ [JOB COMPLETE] Successfully processed document {document_id}")
-    print("=" * 60 + "\n")
-    return {"stored": True}
+
+        participants = extract_participants(
+            clusters, mentions, resolved_text, PATTERNS, TITLES, NLP
+        )
+        _doc_log(document_id, "coref_participants", count=len(participants))
+
+        if participants:
+            try:
+                post_participants(document_id, participants)
+                _doc_log(document_id, "coref_participants_posted", count=len(participants))
+            except Exception as e:
+                _doc_log(document_id, "coref_failed", stage="post_participants", error=str(e))
+                raise
+
+        normalized_text = normalize_text(resolved_text, participants, mentions)
+        _doc_log(document_id, "coref_normalized", chars=len(normalized_text))
+
+        paralegal_chunks = paralegal_chunk(
+            normalized_text,
+            PARALEGAL_CHUNK_MAX_TOKENS,
+            weights=WEIGHTS,
+            document_type=document_type,
+        )
+        _doc_log(document_id, "coref_chunks", count=len(paralegal_chunks))
+
+        if paralegal_chunks:
+            try:
+                post_chunks(document_id, paralegal_chunks, normalized_text)
+                _doc_log(document_id, "coref_chunks_posted", count=len(paralegal_chunks))
+            except Exception as e:
+                _doc_log(document_id, "coref_failed", stage="post_chunks", error=str(e))
+                raise
+
+        total_ms = int((time.time() - job_started) * 1000)
+        _doc_log(document_id, "coref_job_complete", totalMs=total_ms)
+        return {"stored": True}
+
+    except Exception as e:
+        _doc_log(
+            document_id,
+            "coref_failed",
+            error=str(e),
+            ms=int((time.time() - job_started) * 1000),
+        )
+        raise
 
 
 # Manual test job - commented out for production testing
@@ -225,6 +301,7 @@ async def main() -> None:
     print(f"📝 [CONFIG] Queue name: {COREF_QUEUE_NAME}")
     print(f"📝 [CONFIG] Redis URL: {REDIS_URL}")
     print(f"📝 [CONFIG] Model architecture: {COREF_MODEL_ARCHITECTURE}")
+    print(f"📝 [CONFIG] Max chars per chunk: {COREF_MAX_CHARS}")
     print(f"📝 [CONFIG] API base URL: {API_BASE_URL}")
     print("=" * 60)
     

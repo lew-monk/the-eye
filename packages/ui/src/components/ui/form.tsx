@@ -184,7 +184,7 @@ const FormDescription = React.forwardRef<HTMLParagraphElement, FormDescriptionPr
     return (
       <p
         ref={ref}
-        className={cn("font-mono text-xs text-muted-foreground/60", className)}
+        className={cn("font-mono text-xs text-outline", className)}
         {...props}
       />
     )
