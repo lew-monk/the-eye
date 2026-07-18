@@ -48,13 +48,24 @@ export abstract class CoreferenceService {
 
 		await documentRepository.addProcessingLog({
 			documentId,
-			action: 'coreference_completed',
+			action: 'coref_completed',
 			details: {
 				model: body?.model,
 				modelVersion: body?.model_version,
 				inputCharCount: body?.input_char_count,
 				processingTimeMs: body?.processing_time_ms,
+				chunked: body?.chunked,
+				chunkCount: body?.chunk_count,
+				clusters: Array.isArray(body?.clusters) ? body.clusters.length : undefined,
+				mentions: Array.isArray(body?.mentions) ? body.mentions.length : undefined,
 			},
+		})
+
+		console.log(`[DOC ${documentId}] coref_completed`, {
+			model: body?.model,
+			inputCharCount: body?.input_char_count,
+			processingTimeMs: body?.processing_time_ms,
+			chunkCount: body?.chunk_count,
 		})
 
 		return { success: true }

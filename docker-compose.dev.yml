@@ -100,6 +100,8 @@ services:
       - "3001:3001"
     env_file:
       - ./.env
+    environment:
+      - OCR_WORKER_CONCURRENCY=${OCR_WORKER_CONCURRENCY:-2}
     volumes:
       - .:/app
       - /app/node_modules

@@ -1,57 +1,36 @@
-# Use the official Bun image
+# Development Dockerfile for hot reload
 FROM oven/bun:1 AS base
 
-# Install dependencies only when needed
-FROM base AS deps
 WORKDIR /app
+
+# Copy config files for path mapping
+COPY tsconfig.json ./
+# COPY packages/ui/tsconfig.json ./packages/ui/
+COPY packages/shared/tsconfig.json ./packages/shared/
+COPY packages/core/tsconfig.json ./packages/core/
+COPY packages/workers/tsconfig.json ./packages/workers/
+COPY apps/api/tsconfig.json ./apps/api/
 
 # Copy package files
 COPY package.json bun.lock ./
-COPY packages/ui/package.json ./packages/ui/
+# COPY packages/ui/package.json ./packages/ui/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/core/package.json ./packages/core/
 COPY packages/workers/package.json ./packages/workers/
-COPY apps/api/package.json ./apps/api/
-
-# Install dependencies
-RUN bun install --frozen-lockfile
-
-# Build the shared packages
-FROM deps AS builder
-WORKDIR /app
+COPY package.json ./apps/api/
 
 # Copy source code
 COPY . .
 
-# Build shared packages first
-RUN bun run build --filter='@workspace/shared'
-RUN bun run build --filter='@workspace/ui'
-RUN bun run build --filter='@workspace/core'
-RUN bun run build --filter='@workspace/workers'
+# Install dependencies and build shared packages
+RUN bun install && bun run build --filter='@workspace/shared' && bun run build --filter='@workspace/core' && bun run build --filter='@workspace/workers'
 
-# Build the API
-RUN bun run build --filter='@workspace/api'
+# Web development stage
+FROM base AS web-dev
+EXPOSE 3000
+WORKDIR /app/apps/web
 
-# Production image
-FROM base AS runtime
-WORKDIR /app
-
-# Copy built packages and API
-COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
-COPY --from=builder /app/packages/ui/dist ./packages/ui/dist
-COPY --from=builder /app/packages/core/dist ./packages/core/dist
-COPY --from=builder /app/packages/workers/dist ./packages/workers/dist
-COPY --from=builder /app/apps/api/dist ./apps/api/dist
-COPY --from=builder /app/apps/api/package.json ./apps/api/
-
-# Install only production dependencies for API
-RUN cd apps/api && bun install --production --frozen-lockfile
-
-# Switch to non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nodejs
-USER nodejs
-
-EXPOSE 3003
-
-CMD ["bun", "run", "./apps/api/dist/index.js"]
+# API development stage
+FROM base AS api-dev
+EXPOSE 3001
+WORKDIR /app/apps/api

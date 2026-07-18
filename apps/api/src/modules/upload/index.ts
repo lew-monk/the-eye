@@ -14,8 +14,9 @@ export const upload = new Elysia()
 		'/upload',
 		async ({ body, store }) => {
 			try {
-				const { file, documentType } = body
-				const { documentId } = await UploadService.processUpload(file, documentType)
+				const { file, documentType, caseId } = body
+				const caseIdNum = caseId ? Number(caseId) : undefined
+				const { documentId } = await UploadService.processUpload(file, documentType, caseIdNum)
 
 				const processingTimeMs = Date.now() - (store.startTime as number)
 

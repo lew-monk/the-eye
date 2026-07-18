@@ -14,6 +14,11 @@ export const UploadModel = {
 			description:
 				'Document type must be one of the following: judgment, court_order, contract, agreement, police_report, incident_report, witness_statement, affidavit, pleading, motion, brief, transcript, administrative_decision, regulatory_filing, other',
 		}),
+		caseId: t.Optional(
+			t.String({
+				description: 'Case ID to associate this document with',
+			}),
+		),
 	}),
 	response400: t.Object({
 		error: t.String(),

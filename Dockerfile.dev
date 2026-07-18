@@ -10,7 +10,8 @@ COPY packages/shared/tsconfig.json ./packages/shared/
 COPY packages/core/tsconfig.json ./packages/core/
 COPY packages/workers/tsconfig.json ./packages/workers/
 COPY apps/api/tsconfig.json ./apps/api/
-COPY apps/web/tsconfig.json ./apps/web/
+COPY apps/eye-web-app/tsconfig.json ./apps/eye-web-app/
+COPY apps/eye-web-app/vite.config.ts ./apps/eye-web-app/
 
 # Copy package files
 COPY package.json bun.lock ./
@@ -18,19 +19,19 @@ COPY packages/ui/package.json ./packages/ui/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/core/package.json ./packages/core/
 COPY packages/workers/package.json ./packages/workers/
-COPY apps/web/package.json ./apps/web/
 COPY apps/api/package.json ./apps/api/
+COPY apps/eye-web-app/package.json ./apps/eye-web-app/
 
 # Copy source code
 COPY . .
 
 # Install dependencies and build shared packages
-RUN bun install && bun run build --filter='@workspace/shared' && bun run build --filter='@workspace/ui' && bun run build --filter='@workspace/core' && bun run build --filter='@workspace/workers'
+RUN bun install && bun run build --filter='@workspace/shared' && bun run build --filter='@workspace/core' && bun run build --filter='@workspace/workers' && bun run build --filter='@workspace/eye-web-app'
 
 # Web development stage
 FROM base AS web-dev
 EXPOSE 3000
-WORKDIR /app/apps/web
+WORKDIR /app/apps/eye-web-app
 
 # API development stage
 FROM base AS api-dev
