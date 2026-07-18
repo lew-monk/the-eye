@@ -9,7 +9,6 @@ WORKDIR /app
 COPY package.json bun.lock ./
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/shared/package.json ./packages/shared/
-COPY apps/web/package.json ./apps/web/
 COPY apps/api/package.json ./apps/api/
 
 # Install dependencies
@@ -26,8 +25,6 @@ COPY . .
 RUN bun run build --filter='@workspace/shared'
 RUN bun run build --filter='@workspace/ui'
 
-# Build the web app
-RUN bun run build --filter='@workspace/web'
 
 # Production image for web
 FROM nginx:alpine AS web
