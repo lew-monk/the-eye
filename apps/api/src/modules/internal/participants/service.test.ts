@@ -9,6 +9,10 @@ const mockParticipantCreateMany = mock()
 const mockParticipantFindCaseEntityOverlap = mock()
 const mockParticipantFindByCaseIdAndNormalizedNames = mock()
 const mockParticipantUpdateById = mock()
+const mockParticipantFindCrossCaseEntityOverlap = mock().mockResolvedValue([])
+
+const mockCaseRelationFindExisting = mock().mockResolvedValue(null)
+const mockCaseRelationCreate = mock().mockResolvedValue({ id: 1 })
 
 mock.module('@workspace/shared', () => ({
 	documentRepository: {
@@ -24,6 +28,11 @@ mock.module('@workspace/shared', () => ({
 		findCaseEntityOverlap: mockParticipantFindCaseEntityOverlap,
 		findByCaseIdAndNormalizedNames: mockParticipantFindByCaseIdAndNormalizedNames,
 		updateById: mockParticipantUpdateById,
+		findCrossCaseEntityOverlap: mockParticipantFindCrossCaseEntityOverlap,
+	},
+	caseRelationRepository: {
+		findExistingRelation: mockCaseRelationFindExisting,
+		create: mockCaseRelationCreate,
 	},
 }))
 
@@ -50,11 +59,17 @@ describe('ParticipantsService.store()', () => {
 		mockParticipantFindCaseEntityOverlap.mockReset()
 		mockParticipantFindByCaseIdAndNormalizedNames.mockReset()
 		mockParticipantUpdateById.mockReset()
+		mockParticipantFindCrossCaseEntityOverlap.mockReset()
+		mockCaseRelationFindExisting.mockReset()
+		mockCaseRelationCreate.mockReset()
 
 		mockDocUpdateById.mockResolvedValue({})
 		mockDocAddProcessingLog.mockResolvedValue(undefined)
 		mockParticipantDeleteByDocumentId.mockResolvedValue(undefined)
 		mockParticipantUpdateById.mockResolvedValue({})
+		mockParticipantFindCrossCaseEntityOverlap.mockResolvedValue([])
+		mockCaseRelationFindExisting.mockResolvedValue(null)
+		mockCaseRelationCreate.mockResolvedValue({ id: 1 })
 	})
 
 	it('returns null when document is not found', async () => {
@@ -65,6 +80,12 @@ describe('ParticipantsService.store()', () => {
 		expect(result).toBeNull()
 		expect(mockParticipantDeleteByDocumentId).not.toHaveBeenCalled()
 		expect(mockParticipantCreateMany).not.toHaveBeenCalled()
+	})
+
+	it('returns null when documentId is negative', async () => {
+		mockDocFindById.mockResolvedValue(null)
+		const result = await ParticipantsService.store(-1, [], VERSION)
+		expect(result).toBeNull()
 	})
 
 	it('stores participants and skips recalibration when document has no caseId', async () => {
@@ -109,7 +130,6 @@ describe('ParticipantsService.store()', () => {
 
 		const updateCalls = mockParticipantUpdateById.mock.calls
 		expect(updateCalls.length).toBe(1)
-		// bonus = ((2 - 1) / 3) * 0.5 = 0.166... , 0.7 + 0.166 = 0.866..., capped at 1
 		expect(updateCalls[0]?.[1]?.relevanceScore).toBeCloseTo(0.867, 2)
 	})
 
@@ -126,7 +146,6 @@ describe('ParticipantsService.store()', () => {
 
 		const updateCalls = mockParticipantUpdateById.mock.calls
 		expect(updateCalls.length).toBe(1)
-		// bonus = ((3 - 1) / 3) * 0.5 = 0.333..., 0.6 + 0.333 = 0.933...
 		expect(updateCalls[0]?.[1]?.relevanceScore).toBeCloseTo(0.933, 2)
 	})
 
@@ -142,7 +161,6 @@ describe('ParticipantsService.store()', () => {
 		await ParticipantsService.store(DOC_ID, [{ name: 'Judge Wanjiku', normalizedName: 'judge-wanjiku', relevanceScore: 0.9 }], VERSION)
 
 		const updateCalls = mockParticipantUpdateById.mock.calls
-		// bonus = 0.333, 0.9 + 0.333 = 1.233 → capped at 1
 		expect(updateCalls[0]?.[1]?.relevanceScore).toBe(1)
 	})
 
@@ -158,7 +176,6 @@ describe('ParticipantsService.store()', () => {
 		await ParticipantsService.store(DOC_ID, [{ name: 'Unknown Entity', normalizedName: 'unknown-entity' }], VERSION)
 
 		const updateCalls = mockParticipantUpdateById.mock.calls
-		// bonus = ((2-1)/3)*0.5 = 0.166..., 0 + 0.166 = 0.166...
 		expect(updateCalls[0]?.[1]?.relevanceScore).toBeCloseTo(0.167, 2)
 	})
 
@@ -211,8 +228,6 @@ describe('ParticipantsService.store()', () => {
 		const update200 = updateCalls.find((c: any) => c[0] === 200)
 		const update300 = updateCalls.find((c: any) => c[0] === 300)
 
-		// bonus = ((3-1)/3)*0.5 = 0.333
-		// participant 100: 0.7 + 0.333 = 1.033 → capped at 1
 		expect(update100?.[1]?.relevanceScore).toBe(1)
 		expect(update200?.[1]?.relevanceScore).toBeCloseTo(0.883, 2)
 		expect(update300?.[1]?.relevanceScore).toBeCloseTo(0.933, 2)
@@ -241,6 +256,43 @@ describe('ParticipantsService.store()', () => {
 		expect(mockParticipantUpdateById).not.toHaveBeenCalled()
 	})
 
+	it('handles zero extractionVersion', async () => {
+		mockDocFindById.mockResolvedValue({ id: DOC_ID, caseId: null })
+		const records = inserted([{ normalizedName: 'zero-ver' }])
+		mockParticipantCreateMany.mockResolvedValue(records)
+
+		const result = await ParticipantsService.store(DOC_ID, [{ name: 'Zero', normalizedName: 'zero-ver' }], 0)
+
+		expect(result).toEqual({ count: 1 })
+		const createArgs = mockParticipantCreateMany.mock.calls[0]?.[0]
+		expect(createArgs[0].extractionVersion).toBe(0)
+	})
+
+	it('throws when participantRepository.createMany fails', async () => {
+		mockDocFindById.mockResolvedValue({ id: DOC_ID, caseId: null })
+		mockParticipantDeleteByDocumentId.mockResolvedValue(undefined)
+		mockParticipantCreateMany.mockRejectedValue(new Error('DB error'))
+
+		await expect(
+			ParticipantsService.store(DOC_ID, [{ name: 'Fail', normalizedName: 'fail' }], VERSION),
+		).rejects.toThrow('DB error')
+	})
+
+	it('preserves all participant fields through createMany', async () => {
+		mockDocFindById.mockResolvedValue({ id: DOC_ID, caseId: null })
+		const participant = { name: 'Jane Doe', normalizedName: 'jane-doe', role: 'judge', relevanceScore: 0.9, mentionCount: 5 }
+		const records = inserted([{ normalizedName: 'jane-doe', relevanceScore: 0.9 }])
+		mockParticipantCreateMany.mockResolvedValue(records)
+
+		await ParticipantsService.store(DOC_ID, [participant], VERSION)
+
+		const createArgs = mockParticipantCreateMany.mock.calls[0]?.[0]
+		expect(createArgs[0].documentId).toBe(DOC_ID)
+		expect(createArgs[0].extractionVersion).toBe(VERSION)
+		expect(createArgs[0].role).toBe('judge')
+		expect(createArgs[0].mentionCount).toBe(5)
+	})
+
 	it('logs recalibration with correct metadata', async () => {
 		mockDocFindById.mockResolvedValue({ id: DOC_ID, caseId: 5 })
 		const records = inserted([{ normalizedName: 'kamau', relevanceScore: 0.7 }])
@@ -263,7 +315,6 @@ describe('ParticipantsService.store()', () => {
 
 		expect(extractionLog).toBeDefined()
 		expect(extractionLog?.[0]?.details?.count).toBe(1)
-
 		expect(recalibrationLog).toBeDefined()
 		expect(recalibrationLog?.[0]?.details?.caseId).toBe(5)
 		expect(recalibrationLog?.[0]?.details?.overlappingEntities).toBe(1)
@@ -289,5 +340,104 @@ describe('ParticipantsService.store()', () => {
 			(c: any) => c[0]?.action === 'participants_recalibrated',
 		)
 		expect(recalibrationLog?.[0]?.details?.bidiUpdates).toBe(1)
+	})
+
+	it('creates cross-case relations when overlap exists', async () => {
+		mockDocFindById.mockResolvedValue({ id: DOC_ID, caseId: 5 })
+		const records = inserted([{ normalizedName: 'cross-entity', relevanceScore: 0.8 }])
+		mockParticipantCreateMany.mockResolvedValue(records)
+		mockParticipantFindCaseEntityOverlap.mockResolvedValue([
+			{ participantId: 1, normalizedName: 'cross-entity', docCount: 1, totalDocsInCase: 1, mentionCountAcrossCase: 5 },
+		])
+		mockParticipantFindByCaseIdAndNormalizedNames.mockResolvedValue([])
+		mockParticipantFindCrossCaseEntityOverlap.mockResolvedValue([
+			{
+				participantId: 1,
+				normalizedName: 'cross-entity',
+				matchedCaseId: 10,
+				matchedCaseNumber: 'CASE-ABC',
+				docCountInOtherCase: 2,
+				totalMentionsAcrossCases: 7,
+			},
+		])
+
+		await ParticipantsService.store(DOC_ID, [{ name: 'Cross Entity', normalizedName: 'cross-entity', relevanceScore: 0.8 }], VERSION)
+
+		expect(mockCaseRelationCreate).toHaveBeenCalledTimes(1)
+		const createCall = mockCaseRelationCreate.mock.calls[0]?.[0]
+		expect(createCall.sourceCaseId).toBe(5)
+		expect(createCall.targetCaseId).toBe(10)
+		expect(createCall.relationType).toBe('shared_entity')
+		expect(createCall.entityName).toBe('cross-entity')
+	})
+
+	it('skips duplicate cross-case relations', async () => {
+		mockDocFindById.mockResolvedValue({ id: DOC_ID, caseId: 5 })
+		const records = inserted([{ normalizedName: 'dup-entity', relevanceScore: 0.8 }])
+		mockParticipantCreateMany.mockResolvedValue(records)
+		mockParticipantFindCaseEntityOverlap.mockResolvedValue([
+			{ participantId: 1, normalizedName: 'dup-entity', docCount: 1, totalDocsInCase: 1, mentionCountAcrossCase: 3 },
+		])
+		mockParticipantFindByCaseIdAndNormalizedNames.mockResolvedValue([])
+		mockCaseRelationFindExisting.mockResolvedValue({ id: 99 })
+
+		await ParticipantsService.store(DOC_ID, [{ name: 'Dup', normalizedName: 'dup-entity', relevanceScore: 0.8 }], VERSION)
+
+		expect(mockCaseRelationCreate).not.toHaveBeenCalled()
+	})
+
+	it('logs cross-case relations when created', async () => {
+		mockDocFindById.mockResolvedValue({ id: DOC_ID, caseId: 5 })
+		const records = inserted([{ normalizedName: 'xentity', relevanceScore: 0.7 }])
+		mockParticipantCreateMany.mockResolvedValue(records)
+		mockParticipantFindCaseEntityOverlap.mockResolvedValue([
+			{ participantId: 1, normalizedName: 'xentity', docCount: 1, totalDocsInCase: 1, mentionCountAcrossCase: 2 },
+		])
+		mockParticipantFindByCaseIdAndNormalizedNames.mockResolvedValue([])
+		mockParticipantFindCrossCaseEntityOverlap.mockResolvedValue([
+			{
+				participantId: 1, normalizedName: 'xentity', matchedCaseId: 20,
+				matchedCaseNumber: 'CASE-XYZ', docCountInOtherCase: 1, totalMentionsAcrossCases: 3,
+			},
+		])
+
+		await ParticipantsService.store(DOC_ID, [{ name: 'XEntity', normalizedName: 'xentity', relevanceScore: 0.7 }], VERSION)
+
+		const crossLog = mockDocAddProcessingLog.mock.calls.find(
+			(c: any) => c[0]?.action === 'cross_case_relations_created',
+		)
+		expect(crossLog).toBeDefined()
+		expect(crossLog?.[0]?.details?.count).toBe(1)
+	})
+
+	it('uses normalised pair key ordering for deduplication', async () => {
+		mockDocFindById.mockResolvedValue({ id: DOC_ID, caseId: 5 })
+		const records = inserted([
+			{ normalizedName: 'entity-a', relevanceScore: 0.7 },
+			{ normalizedName: 'entity-b', relevanceScore: 0.6 },
+		])
+		mockParticipantCreateMany.mockResolvedValue(records)
+		mockParticipantFindCaseEntityOverlap.mockResolvedValue([
+			{ participantId: 1, normalizedName: 'entity-a', docCount: 1, totalDocsInCase: 1, mentionCountAcrossCase: 2 },
+			{ participantId: 2, normalizedName: 'entity-b', docCount: 1, totalDocsInCase: 1, mentionCountAcrossCase: 2 },
+		])
+		mockParticipantFindByCaseIdAndNormalizedNames.mockResolvedValue([])
+		mockParticipantFindCrossCaseEntityOverlap.mockResolvedValue([
+			{
+				participantId: 1, normalizedName: 'entity-a', matchedCaseId: 20,
+				matchedCaseNumber: 'CASE-A', docCountInOtherCase: 1, totalMentionsAcrossCases: 2,
+			},
+			{
+				participantId: 2, normalizedName: 'entity-b', matchedCaseId: 20,
+				matchedCaseNumber: 'CASE-A', docCountInOtherCase: 1, totalMentionsAcrossCases: 2,
+			},
+		])
+
+		await ParticipantsService.store(DOC_ID, [
+			{ name: 'Entity A', normalizedName: 'entity-a', relevanceScore: 0.7 },
+			{ name: 'Entity B', normalizedName: 'entity-b', relevanceScore: 0.6 },
+		], VERSION)
+
+		expect(mockCaseRelationCreate).toHaveBeenCalledTimes(2)
 	})
 })
