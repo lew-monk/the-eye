@@ -64,6 +64,20 @@
       "when": 1783693742657,
       "tag": "0008_dizzy_deathbird",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1750775600000,
+      "tag": "0009_dry_spot",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1750775700000,
+      "tag": "0010_document_storage",
+      "breakpoints": true
     }
   ]
 }

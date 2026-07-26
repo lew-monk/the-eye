@@ -19,7 +19,14 @@ import {
 	SectionHeader,
 } from "#/components/case-detail";
 import { useTRPC } from "#/integrations/trpc/react";
-import type { SimilarCaseResult, CaseRelationData } from "#/integrations/trpc/routers/cases";
+import type {
+	SimilarCaseResult,
+	CaseRelationData,
+	ChronologyEvent,
+	DocumentGraphData,
+	RoleVarianceFlag,
+	EntityTrajectory,
+} from "#/integrations/trpc/routers/cases";
 
 export const Route = createFileRoute("/cases/$caseId")({
 	component: CaseDetail,
@@ -170,6 +177,26 @@ function CaseDetail() {
 		enabled: !Number.isNaN(id),
 	});
 
+	const { data: chronology = [] } = useQuery({
+		...trpc.cases.getDocumentChronology.queryOptions({ caseId: id }),
+		enabled: !Number.isNaN(id) && documents.length > 0,
+	});
+
+	const { data: docGraph } = useQuery({
+		...trpc.cases.getDocumentGraph.queryOptions({ caseId: id }),
+		enabled: !Number.isNaN(id) && documents.length > 0,
+	});
+
+	const { data: roleFlags = [] } = useQuery({
+		...trpc.cases.getRoleVarianceFlags.queryOptions({ caseId: id }),
+		enabled: !Number.isNaN(id) && documents.length > 0,
+	});
+
+	const { data: trajectories = [] } = useQuery({
+		...trpc.cases.getEntityTrajectories.queryOptions({ caseId: id }),
+		enabled: !Number.isNaN(id) && documents.length > 0,
+	});
+
 	if (Number.isNaN(id)) {
 		return (
 			<AppShell>
@@ -294,22 +321,39 @@ function CaseDetail() {
 																<span>{(doc.fileSize / 1024).toFixed(0)} KB</span>
 															</div>
 														</div>
-														<StatusDot
-															variant={
-																doc.status === "completed" || doc.status === "processed"
-																	? "success"
-																	: doc.status === "failed"
-																		? "error"
-																		: doc.status === "processing" || doc.status === "queued"
-																			? "warning"
-																			: "muted"
-															}
+													{doc.storageKey && (
+														<Button
+															variant="ghost"
 															size="sm"
-														/>
-														<span className="font-mono text-meta uppercase tracking-wider text-outline shrink-0">
-															{doc.status}
-														</span>
-													</div>
+															brackets={false}
+															className="shrink-0 text-meta uppercase tracking-wider text-primary/50 hover:text-primary"
+															asChild
+														>
+															<a
+																href={`/api/documents/${doc.id}/file`}
+																download={doc.filename}
+																onClick={(e) => e.stopPropagation()}
+															>
+																DOWNLOAD
+															</a>
+														</Button>
+													)}
+													<StatusDot
+														variant={
+															doc.status === "completed" || doc.status === "processed"
+																? "success"
+																: doc.status === "failed"
+																	? "error"
+																	: doc.status === "processing" || doc.status === "queued"
+																		? "warning"
+																		: "muted"
+														}
+														size="sm"
+													/>
+													<span className="font-mono text-meta uppercase tracking-wider text-outline shrink-0">
+														{doc.status}
+													</span>
+												</div>
 													<DocumentChunks documentId={doc.id} density="standard" />
 												</div>
 											))}
@@ -505,6 +549,216 @@ function CaseDetail() {
 								)}
 							</GlassPanel>
 						</div>
+
+						{documents.length > 0 && (
+							<div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+								<div className="space-y-3">
+									<SectionHeader label="DOCUMENT_CHRONOLOGY" count={chronology.length} />
+									<GlassPanel variant="default" brackets="both" padding="none">
+										{chronology.length === 0 ? (
+											<EmptyStatePreset
+												variant="no-matches"
+												size="sm"
+												heading="NO_DATES_EXTRACTED"
+												body="Document dates from structured data will appear here."
+											/>
+										) : (
+											<div className="divide-y divide-outline-variant/10">
+												{chronology.map((ev: ChronologyEvent) => (
+													<div key={ev.documentId} className="px-5 py-3">
+														<div className="flex items-center gap-2 mb-1">
+															<span className="font-mono text-body tabular-nums text-primary/60">
+																{ev.date}
+															</span>
+															<span className="font-mono text-meta uppercase tracking-wider text-outline">
+																{ev.documentType}
+															</span>
+														</div>
+														<span className="font-mono text-body text-on-surface-variant block truncate">
+															{ev.filename}
+														</span>
+														{ev.entities.length > 0 && (
+															<div className="flex flex-wrap gap-1 mt-1.5">
+																{ev.entities.slice(0, 4).map((e) => (
+																	<Link
+																		key={e.normalizedName}
+																		to="/entities/$entityName"
+																		params={{
+																			entityName: encodeURIComponent(e.normalizedName),
+																		}}
+																		className="font-mono text-meta text-primary/40 hover:text-primary"
+																	>
+																		{e.name}
+																	</Link>
+																))}
+																{ev.entities.length > 4 && (
+																	<span className="font-mono text-meta text-outline">
+																		+{ev.entities.length - 4}
+																	</span>
+																)}
+															</div>
+														)}
+													</div>
+												))}
+											</div>
+										)}
+									</GlassPanel>
+								</div>
+
+								<div className="space-y-3">
+									<SectionHeader
+										label="DOCUMENT_GRAPH"
+										count={docGraph?.edges.length ?? 0}
+									/>
+									<GlassPanel variant="default" brackets="both" padding="none">
+										{!docGraph || docGraph.edges.length === 0 ? (
+											<EmptyStatePreset
+												variant="no-matches"
+												size="sm"
+												heading="NO_CROSS_REFS"
+												body="Explicit references and type hierarchy links will appear here."
+											/>
+										) : (
+											<div className="divide-y divide-outline-variant/10">
+												{(docGraph as DocumentGraphData).edges.map((edge, i) => {
+													const src = docGraph.nodes.find(
+														(n) => n.documentId === edge.sourceDocumentId,
+													);
+													const tgt = docGraph.nodes.find(
+														(n) => n.documentId === edge.targetDocumentId,
+													);
+													return (
+														<div key={i} className="px-5 py-3">
+															<div className="flex items-center gap-2 flex-wrap">
+																<span className="font-mono text-body text-on-surface-variant">
+																	{src?.filename ?? edge.sourceDocumentId}
+																</span>
+																<span className="font-mono text-meta text-primary/50">
+																	→
+																</span>
+																<span className="font-mono text-body text-on-surface-variant">
+																	{tgt?.filename ?? edge.targetDocumentId}
+																</span>
+															</div>
+															<div className="flex items-center gap-2 mt-1">
+																<StatusChip
+																	variant={
+																		edge.relationType === "explicit_reference"
+																			? "default"
+																			: "muted"
+																	}
+																	size="sm"
+																>
+																	{edge.relationType}
+																</StatusChip>
+																<span className="font-mono text-meta text-outline truncate">
+																	{edge.label}
+																</span>
+															</div>
+														</div>
+													);
+												})}
+											</div>
+										)}
+									</GlassPanel>
+								</div>
+							</div>
+						)}
+
+						{roleFlags.length > 0 && (
+							<div className="mt-4 space-y-3">
+								<SectionHeader label="ROLE_VARIANCE" count={roleFlags.length} />
+								<GlassPanel variant="default" brackets="both" padding="none">
+									<div className="divide-y divide-outline-variant/10">
+										{roleFlags.map((f: RoleVarianceFlag) => (
+											<div key={f.normalizedName} className="px-5 py-3">
+												<div className="flex items-center gap-2 mb-1">
+													<Link
+														to="/entities/$entityName"
+														params={{
+															entityName: encodeURIComponent(f.normalizedName),
+														}}
+														className="font-mono text-body text-on-surface-variant hover:text-primary"
+													>
+														{f.displayName}
+													</Link>
+													<StatusChip variant="warning" size="sm">
+														{f.primaryRole}
+													</StatusChip>
+												</div>
+												<p className="font-mono text-meta text-warning/60">{f.flag}</p>
+												<div className="flex flex-wrap gap-1 mt-1.5">
+													{f.roles.map((r) => (
+														<span
+															key={r.role}
+															className="font-mono text-meta text-outline border border-outline-variant/30 px-1.5 py-0.5"
+														>
+															{r.role} ×{r.count}
+														</span>
+													))}
+												</div>
+											</div>
+										))}
+									</div>
+								</GlassPanel>
+							</div>
+						)}
+
+						{trajectories.length > 0 && (
+							<div className="mt-4 space-y-3">
+								<SectionHeader
+									label="ENTITY_TRAJECTORIES"
+									count={trajectories.length}
+								/>
+								<GlassPanel variant="default" brackets="both" padding="none">
+									<div className="divide-y divide-outline-variant/10">
+										{trajectories.slice(0, 8).map((t: EntityTrajectory) => {
+											const maxMentions = Math.max(
+												...t.points.map((p) => p.mentionCount),
+												1,
+											);
+											return (
+												<div key={t.normalizedName} className="px-5 py-3">
+													<div className="flex items-center gap-2 mb-2">
+														<Link
+															to="/entities/$entityName"
+															params={{
+																entityName: encodeURIComponent(t.normalizedName),
+															}}
+															className="font-mono text-body text-on-surface-variant hover:text-primary"
+														>
+															{t.displayName}
+														</Link>
+														<span className="font-mono text-meta text-outline">
+															{t.points.length} DOCS
+														</span>
+													</div>
+													<div className="flex items-end gap-1 h-10">
+														{t.points.map((p) => (
+															<div
+																key={p.documentId}
+																className="flex-1 flex flex-col items-center gap-0.5 min-w-0"
+																title={`${p.filename}: ${p.mentionCount} mentions`}
+															>
+																<div
+																	className="w-full bg-primary/40 min-h-[2px]"
+																	style={{
+																		height: `${Math.max(8, (p.mentionCount / maxMentions) * 100)}%`,
+																	}}
+																/>
+																<span className="font-mono text-meta-sm tabular-nums text-outline truncate w-full text-center">
+																	{p.mentionCount}
+																</span>
+															</div>
+														))}
+													</div>
+												</div>
+											);
+										})}
+									</div>
+								</GlassPanel>
+							</div>
+						)}
 					</>
 				)}
 

@@ -26,6 +26,11 @@ export const documents = pgTable('documents', {
 	fileHash: text('file_hash'),
 	textHash: text('text_hash'),
 
+	// Object storage (original file)
+	storageKey: text('storage_key'),
+	storageBucket: text('storage_bucket'),
+	contentType: text('content_type'),
+
 	// Status
 	status: text('status').default('pending').notNull(),
 	errorMessage: text('error_message'),

@@ -22,6 +22,27 @@ AZURE_DOCUMENT_INTELLIGENCE_KEY=your-api-key-here
 REDIS_URL=redis://localhost:6379
 ```
 
+### Object storage (original uploads — MinIO / S3)
+
+Persists original PDFs/images via `ObjectStorage` (`packages/core`). OCR still uses in-memory buffers in v1.
+
+```bash
+# minio | s3 | none (none = skip put; upload/OCR unchanged)
+STORAGE_PROVIDER=minio
+S3_ENDPOINT=http://localhost:9000   # http://minio:9000 inside Docker
+S3_REGION=us-east-1
+S3_ACCESS_KEY_ID=minioadmin
+S3_SECRET_ACCESS_KEY=minioadmin
+S3_BUCKET=the-eye-documents
+S3_FORCE_PATH_STYLE=true            # required for MinIO
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=minioadmin
+```
+
+- Console (dev): http://localhost:9001  
+- Download API: `GET /documents/:id/file` (streams original when `storage_key` is set)  
+- Swap to AWS: `STORAGE_PROVIDER=s3`, real credentials, optional `S3_FORCE_PATH_STYLE=false`
+
 ### OCR Confidence Thresholds (Optional)
 ```bash
 CONFIDENCE_THRESHOLD_DEFAULT=0.7

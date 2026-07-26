@@ -14,6 +14,8 @@ export type DocumentStatusValue = (typeof DocumentStatus)[keyof typeof DocumentS
 export const PipelineStage = {
 	UPLOAD_RECEIVED: 'upload_received',
 	DOCUMENT_CREATED: 'document_created',
+	STORAGE_PERSISTED: 'storage_persisted',
+	STORAGE_FAILED: 'storage_failed',
 	QUEUED: 'queued',
 	WORKER_STARTED: 'worker_started',
 	OCR_STARTED: 'ocr_started',

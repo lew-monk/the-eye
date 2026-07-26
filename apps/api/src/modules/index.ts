@@ -5,6 +5,7 @@ import { upload } from './upload'
 import { internal } from './internal'
 import { casesRouter } from './cases'
 import { entitiesRouter } from './entities'
+import { documentsRouter } from './documents'
 import { ChunksService } from './internal/chunks/service'
 import { CasesService } from './cases/service'
 import { participantRepository, chunkRepository, documentRepository } from '@workspace/shared'
@@ -16,6 +17,7 @@ export const modules = new Elysia()
 	.use(internal)
 	.use(casesRouter)
 	.use(entitiesRouter)
+	.use(documentsRouter)
 	.get(
 		'/documents/stats',
 		async () => {

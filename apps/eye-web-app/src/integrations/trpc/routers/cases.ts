@@ -35,6 +35,8 @@ export interface DocumentData {
 	caseNumber: string | null;
 	caseId: number | null;
 	status: string;
+	storageKey?: string | null;
+	contentType?: string | null;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -203,6 +205,55 @@ export interface EntityDossierData {
 	};
 }
 
+export interface ChronologyEvent {
+	documentId: number;
+	filename: string;
+	documentType: string;
+	date: string;
+	dateSource: string;
+	entities: {
+		normalizedName: string;
+		name: string;
+		role: string;
+		mentionCount: number;
+	}[];
+}
+
+export interface DocumentGraphData {
+	nodes: {
+		documentId: number;
+		filename: string;
+		documentType: string;
+	}[];
+	edges: {
+		sourceDocumentId: number;
+		targetDocumentId: number;
+		relationType: "explicit_reference" | "implicit_subset";
+		label: string;
+	}[];
+}
+
+export interface RoleVarianceFlag {
+	normalizedName: string;
+	displayName: string;
+	roles: { role: string; documentIds: number[]; count: number }[];
+	primaryRole: string;
+	flag: string;
+}
+
+export interface EntityTrajectory {
+	normalizedName: string;
+	displayName: string;
+	points: {
+		documentId: number;
+		filename: string;
+		documentType: string;
+		date: string | null;
+		mentionCount: number;
+		role: string;
+	}[];
+}
+
 export const uploadDocumentSchema = z.object({
 	documentType: z.string().min(1, "Document type is required"),
 	caseId: z.number(),
@@ -356,7 +407,42 @@ export const casesRouter = createTRPCRouter({
 			const result = await apiClient.get<{ data: EntityDossierData }>(
 				`/entities/${encodeURIComponent(input.normalizedName)}/dossier`,
 			);
-			console.log('getEntityDossier', result)
 			return result?.data ?? null;
+		}),
+
+	getDocumentChronology: protectedProcedure
+		.input(z.object({ caseId: z.number() }))
+		.query(async ({ input }) => {
+			const result = await apiClient.get<{ data: ChronologyEvent[] }>(
+				`/cases/${input.caseId}/chronology`,
+			);
+			return result?.data ?? [];
+		}),
+
+	getDocumentGraph: protectedProcedure
+		.input(z.object({ caseId: z.number() }))
+		.query(async ({ input }) => {
+			const result = await apiClient.get<{ data: DocumentGraphData }>(
+				`/cases/${input.caseId}/graph`,
+			);
+			return result?.data ?? { nodes: [], edges: [] };
+		}),
+
+	getRoleVarianceFlags: protectedProcedure
+		.input(z.object({ caseId: z.number() }))
+		.query(async ({ input }) => {
+			const result = await apiClient.get<{ data: RoleVarianceFlag[] }>(
+				`/cases/${input.caseId}/role-flags`,
+			);
+			return result?.data ?? [];
+		}),
+
+	getEntityTrajectories: protectedProcedure
+		.input(z.object({ caseId: z.number() }))
+		.query(async ({ input }) => {
+			const result = await apiClient.get<{ data: EntityTrajectory[] }>(
+				`/cases/${input.caseId}/trajectories`,
+			);
+			return result?.data ?? [];
 		}),
 });

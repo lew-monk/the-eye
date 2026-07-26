@@ -45,6 +45,52 @@ services:
         max-size: "10m"
         max-file: "10"
 
+  minio:
+    image: minio/minio:latest
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - the-eye-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "10"
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_started
+    entrypoint: >
+      /bin/sh -c "
+      sleep 3;
+      mc alias set local http://minio:9000 $${MINIO_ROOT_USER:-minioadmin} $${MINIO_ROOT_PASSWORD:-minioadmin};
+      mc mb --ignore-existing local/$${S3_BUCKET:-the-eye-documents};
+      mc anonymous set none local/$${S3_BUCKET:-the-eye-documents};
+      exit 0;
+      "
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_BUCKET: ${S3_BUCKET:-the-eye-documents}
+    networks:
+      - the-eye-network
+
   pgadmin:
     image: dpage/pgadmin4:latest
     restart: always
@@ -102,6 +148,13 @@ services:
       - ./.env
     environment:
       - OCR_WORKER_CONCURRENCY=${OCR_WORKER_CONCURRENCY:-2}
+      - STORAGE_PROVIDER=${STORAGE_PROVIDER:-minio}
+      - S3_ENDPOINT=${S3_ENDPOINT:-http://minio:9000}
+      - S3_REGION=${S3_REGION:-us-east-1}
+      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID:-minioadmin}
+      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-minioadmin}
+      - S3_BUCKET=${S3_BUCKET:-the-eye-documents}
+      - S3_FORCE_PATH_STYLE=${S3_FORCE_PATH_STYLE:-true}
     volumes:
       - .:/app
       - /app/node_modules
@@ -114,6 +167,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      minio:
+        condition: service_started
     working_dir: /app
     networks:
       - the-eye-network
@@ -155,6 +210,7 @@ services:
 volumes:
   postgres_data_vec:
   huggingface_cache:
+  minio_data:
 
 networks:
   the-eye-network:
