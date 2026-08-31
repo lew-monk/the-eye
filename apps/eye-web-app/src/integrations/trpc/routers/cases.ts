@@ -206,17 +206,38 @@ export interface EntityDossierData {
 }
 
 export interface ChronologyEvent {
+	id: string;
 	documentId: number;
 	filename: string;
 	documentType: string;
 	date: string;
 	dateSource: string;
+	kind: string;
+	quote: string | null;
+	summary?: string;
 	entities: {
 		normalizedName: string;
 		name: string;
 		role: string;
 		mentionCount: number;
 	}[];
+	unresolvedRefs: string[];
+}
+
+export interface ChronologyPage {
+	events: ChronologyEvent[];
+	totalDates: number;
+	totalEvents: number;
+}
+
+export interface ReferenceLink {
+	reference: string;
+	attachedTo: string | null;
+	attachedName: string | null;
+	evidence: string;
+	confidence: number;
+	documentId: number;
+	filename: string;
 }
 
 export interface DocumentGraphData {
@@ -224,6 +245,7 @@ export interface DocumentGraphData {
 		documentId: number;
 		filename: string;
 		documentType: string;
+		dates?: { date: string; kind: string }[];
 	}[];
 	edges: {
 		sourceDocumentId: number;
@@ -231,6 +253,78 @@ export interface DocumentGraphData {
 		relationType: "explicit_reference" | "implicit_subset";
 		label: string;
 	}[];
+}
+
+export type CaseNetworkNodeKind =
+	| "case"
+	| "document"
+	| "entity"
+	| "role"
+	| "signal"
+	| "similar_case";
+export type IntelligenceSignalType =
+	| "role_variance"
+	| "surge"
+	| "drop"
+	| "unresolved"
+	| "similar";
+export type NetworkFocusType = "case" | "entity" | "document" | "role";
+
+export type CaseNetworkEdgeKind =
+	| "has_document"
+	| "has_role"
+	| "has_entity"
+	| "mentioned_in"
+	| "doc_ref"
+	| "in_case"
+	| "co_occurs"
+	| "connected_case"
+	| "has_signal"
+	| "about"
+	| "similar_to";
+
+export interface CaseNetworkNode {
+	id: string;
+	kind: CaseNetworkNodeKind | "connected_case";
+	label: string;
+	sublabel?: string;
+	role?: string;
+	weight: number;
+	mentionCount?: number;
+	documentCount?: number;
+	documentType?: string;
+	caseId?: number;
+	documentId?: number;
+	normalizedName?: string;
+	signal?: IntelligenceSignalType;
+	detail?: string;
+}
+
+export interface CaseNetworkEdge {
+	source: string;
+	target: string;
+	kind: CaseNetworkEdgeKind;
+	label?: string;
+}
+
+export interface CaseNetworkData {
+	focusId: string;
+	focusType: NetworkFocusType;
+	caseId: number;
+	caseNumber: string;
+	title: string;
+	caseType: string;
+	status: string;
+	nodes: CaseNetworkNode[];
+	edges: CaseNetworkEdge[];
+	totals: {
+		entities: number;
+		roles: number;
+		documents: number;
+		cases: number;
+		links: number;
+		hiddenEntities: number;
+	};
 }
 
 export interface RoleVarianceFlag {
@@ -326,6 +420,26 @@ export const casesRouter = createTRPCRouter({
 			return result?.data ?? [];
 		}),
 
+	addParticipant: protectedProcedure
+		.input(
+			z.object({
+				caseId: z.number(),
+				name: z.string().min(1),
+				role: z.string().optional(),
+				documentId: z.number().optional(),
+			}),
+		)
+		.mutation(async ({ input }) => {
+			return apiClient.post<{ data: ParticipantEntity }>(
+				`/cases/${input.caseId}/participants`,
+				{
+					name: input.name,
+					role: input.role,
+					documentId: input.documentId,
+				},
+			);
+		}),
+
 	getEntityMentionContexts: protectedProcedure
 		.input(z.object({
 			normalizedName: z.string(),
@@ -334,7 +448,6 @@ export const casesRouter = createTRPCRouter({
 		}))
 		.query(async ({ input }) => {
 			const params = new URLSearchParams({ name: input.normalizedName })
-			console.log('getEntityMentionContexts', input)
 			if (input.mentionIndex != null) params.set("mentionIndex", String(input.mentionIndex))
 			const result = await apiClient.get<{ data: MentionContext[] }>(
 				`/cases/${input.caseId}/entity-contexts?${params.toString()}`,
@@ -411,10 +524,31 @@ export const casesRouter = createTRPCRouter({
 		}),
 
 	getDocumentChronology: protectedProcedure
+		.input(
+			z.object({
+				caseId: z.number(),
+				maxDates: z.number().min(1).max(200).optional(),
+			}),
+		)
+		.query(async ({ input }) => {
+			const qs = input.maxDates != null ? `?limit=${input.maxDates}` : "";
+			const result = await apiClient.get<{
+				data: ChronologyEvent[];
+				totalDates: number;
+				totalEvents: number;
+			}>(`/cases/${input.caseId}/chronology${qs}`);
+			return {
+				events: result?.data ?? [],
+				totalDates: result?.totalDates ?? 0,
+				totalEvents: result?.totalEvents ?? 0,
+			};
+		}),
+
+	getReferenceLinks: protectedProcedure
 		.input(z.object({ caseId: z.number() }))
 		.query(async ({ input }) => {
-			const result = await apiClient.get<{ data: ChronologyEvent[] }>(
-				`/cases/${input.caseId}/chronology`,
+			const result = await apiClient.get<{ data: ReferenceLink[] }>(
+				`/cases/${input.caseId}/reference-links`,
 			);
 			return result?.data ?? [];
 		}),
@@ -426,6 +560,41 @@ export const casesRouter = createTRPCRouter({
 				`/cases/${input.caseId}/graph`,
 			);
 			return result?.data ?? { nodes: [], edges: [] };
+		}),
+
+	getCaseNetwork: protectedProcedure
+		.input(z.object({ caseId: z.number() }))
+		.query(async ({ input }) => {
+			const result = await apiClient.get<{ data: CaseNetworkData }>(
+				`/cases/${input.caseId}/network`,
+			);
+			return result?.data ?? null;
+		}),
+
+	getIntelligenceGraph: protectedProcedure
+		.input(z.object({ caseId: z.number() }))
+		.query(async ({ input }) => {
+			const result = await apiClient.get<{ data: CaseNetworkData }>(
+				`/cases/${input.caseId}/intelligence`,
+			);
+			return result?.data ?? null;
+		}),
+
+	getFocusNetwork: protectedProcedure
+		.input(
+			z.object({
+				type: z.enum(["case", "entity", "document", "role"]),
+				id: z.string().min(1),
+				caseId: z.number().optional(),
+			}),
+		)
+		.query(async ({ input }) => {
+			const params = new URLSearchParams({ type: input.type, id: input.id });
+			if (input.caseId != null) params.set("caseId", String(input.caseId));
+			const result = await apiClient.get<{ data: CaseNetworkData }>(
+				`/network/focus?${params.toString()}`,
+			);
+			return result?.data ?? null;
 		}),
 
 	getRoleVarianceFlags: protectedProcedure

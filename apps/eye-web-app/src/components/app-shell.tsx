@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
 	Button,
 	Form,
@@ -215,11 +215,11 @@ function NewCaseDialog({
 }
 
 const NAV_ITEMS = [
-	{ label: "DASHBOARD", to: "/", active: true },
-	{ label: "INTELLIGENCE", to: "#", active: false },
-	{ label: "NETWORK", to: "#", active: false },
-	{ label: "ARCHIVE", to: "#", active: false },
-	{ label: "SYSTEM", to: "#", active: false },
+	{ label: "DASHBOARD", to: "/" },
+	{ label: "INTELLIGENCE", to: "#" },
+	{ label: "NETWORK", to: "/network" },
+	{ label: "ARCHIVE", to: "#" },
+	{ label: "SYSTEM", to: "#" },
 ] as const;
 
 function LatencyReadout() {
@@ -312,6 +312,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 	const [newCaseOpen, setNewCaseOpen] = useState(false);
 	const [searchOpen, setSearchOpen] = useState(false);
 	const navigate = useNavigate();
+	const pathname = useRouterState({ select: (s) => s.location.pathname });
 	const { data: session, isPending } = authClient.useSession();
 
 	useEffect(() => {
@@ -353,19 +354,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
 				{/* Nav Items */}
 				<div className="hidden md:flex items-center gap-1">
-					{NAV_ITEMS.map((item) => (
-						<Link
-							key={item.label}
-							to={item.to}
-							className={`px-3 py-1.5 font-mono text-body uppercase tracking-wider transition-colors ${
-								item.active
-									? "text-primary border-b border-primary"
-									: "text-outline hover:text-on-surface-variant"
-							}`}
-						>
-							{item.label}
-						</Link>
-					))}
+					{NAV_ITEMS.map((item) => {
+						const active =
+							item.to !== "#" &&
+							(item.to === "/" ? pathname === "/" : pathname.startsWith(item.to));
+						return (
+							<Link
+								key={item.label}
+								to={item.to}
+								className={`px-3 py-1.5 font-mono text-body uppercase tracking-wider transition-colors ${
+									active
+										? "text-primary border-b border-primary"
+										: "text-outline hover:text-on-surface-variant"
+								}`}
+							>
+								{item.label}
+							</Link>
+						);
+					})}
 				</div>
 
 				{/* Mobile nav toggle */}

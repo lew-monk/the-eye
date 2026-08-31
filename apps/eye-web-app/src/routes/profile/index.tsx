@@ -129,7 +129,7 @@ function ApiKeys() {
 					<div className="flex items-center justify-between mb-2">
 						<div className="flex items-center gap-2">
 							<StatusDot variant="success" size="sm" pulse />
-							<span className="font-mono text-body uppercase tracking-[0.15em] text-primary/60">
+							<span className="font-mono text-meta uppercase tracking-[0.12em] text-outline">
 								KEY_GENERATED
 							</span>
 						</div>
@@ -155,7 +155,7 @@ function ApiKeys() {
 			<GlassPanel variant="default" brackets="both" padding="md">
 				<div className="flex items-center gap-2 mb-4">
 					<StatusDot variant="default" size="sm" pulse />
-					<span className="font-mono text-body uppercase tracking-[0.15em] text-on-surface-variant">
+					<span className="font-mono text-meta uppercase tracking-[0.12em] text-outline">
 						API_KEYS
 					</span>
 					<span className="font-mono text-body text-outline ml-auto">
@@ -244,7 +244,7 @@ function ApiKeys() {
 			<GlassPanel variant="default" brackets="both" padding="md">
 				<div className="flex items-center gap-2 mb-4">
 					<StatusDot variant="default" size="sm" pulse />
-					<span className="font-mono text-body uppercase tracking-[0.15em] text-on-surface-variant">
+					<span className="font-mono text-meta uppercase tracking-[0.12em] text-outline">
 						GENERATE_API_KEY
 					</span>
 				</div>

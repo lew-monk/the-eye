@@ -116,8 +116,13 @@ services:
       target: web-dev
     ports:
       - "3000:3000"
+    env_file:
+      - ./.env
     environment:
       - NODE_ENV=development
+      - API_URL=http://api:3001
+      - COREF_SERVICE_TOKEN=${COREF_SERVICE_TOKEN}
+      - API_SERVICE_TOKEN=${COREF_SERVICE_TOKEN}
     volumes:
       - .:/app
       - /app/apps/eye-web-app/node_modules

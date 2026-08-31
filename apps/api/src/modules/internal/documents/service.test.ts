@@ -79,7 +79,7 @@ describe('DocumentsService.reprocess', () => {
 			embeddingVersion: null,
 			embeddingProvider: null,
 			embeddingModel: null,
-			extractionVersion: 1,
+			extractionVersion: null,
 		})
 	})
 

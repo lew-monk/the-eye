@@ -1,7 +1,6 @@
 version: "3.8"
 
 services:
-  # Infrastructure
   postgres:
     restart: always
     image: pgvector/pgvector:0.8.0-pg16
@@ -35,15 +34,58 @@ services:
     networks:
       - the-eye-network
 
-  # Production services
+  minio:
+    image: minio/minio:latest
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - the-eye-network
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_started
+    entrypoint: >
+      /bin/sh -c "
+      sleep 3;
+      mc alias set local http://minio:9000 $${MINIO_ROOT_USER:-minioadmin} $${MINIO_ROOT_PASSWORD:-minioadmin};
+      mc mb --ignore-existing local/$${S3_BUCKET:-the-eye-documents};
+      mc anonymous set none local/$${S3_BUCKET:-the-eye-documents};
+      exit 0;
+      "
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_BUCKET: ${S3_BUCKET:-the-eye-documents}
+    networks:
+      - the-eye-network
+
   web:
     build:
       context: .
-      dockerfile: apps/web/Dockerfile
+      dockerfile: apps/eye-web-app/Dockerfile
     ports:
-      - "3000:80"
+      - "3000:3000"
     environment:
       - NODE_ENV=production
+      - API_URL=http://api:3001
+      - COREF_SERVICE_TOKEN=${COREF_SERVICE_TOKEN}
+      - API_SERVICE_TOKEN=${COREF_SERVICE_TOKEN}
     depends_on:
       - api
     networks:
@@ -60,11 +102,22 @@ services:
       - PORT=3001
       - DATABASE_URL=postgresql://legal_user:legal_pass@postgres:5432/legal_docs
       - REDIS_URL=redis://redis:6379
+      - STORAGE_PROVIDER=${STORAGE_PROVIDER:-minio}
+      - S3_ENDPOINT=${S3_ENDPOINT:-http://minio:9000}
+      - S3_REGION=${S3_REGION:-us-east-1}
+      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID:-minioadmin}
+      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-minioadmin}
+      - S3_BUCKET=${S3_BUCKET:-the-eye-documents}
+      - S3_FORCE_PATH_STYLE=${S3_FORCE_PATH_STYLE:-true}
+      - COREF_SERVICE_TOKEN=${COREF_SERVICE_TOKEN}
+      - API_SERVICE_TOKEN=${COREF_SERVICE_TOKEN}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      minio:
+        condition: service_started
     networks:
       - the-eye-network
 
@@ -74,6 +127,11 @@ services:
       dockerfile: Dockerfile.prod
     environment:
       - COREF_MODEL_ARCHITECTURE=${COREF_MODEL_ARCHITECTURE:-FCoref}
+      - REDIS_URL=redis://redis:6379
+      - API_BASE_URL=http://api:3001
+      - COREF_QUEUE_NAME=coreference-resolution
+      - COREF_MAX_CHARS=${COREF_MAX_CHARS:-200000}
+      - COREF_SERVICE_TOKEN=${COREF_SERVICE_TOKEN}
     volumes:
       - huggingface_cache:/root/.cache/huggingface
     depends_on:
@@ -87,6 +145,7 @@ services:
 volumes:
   postgres_data:
   huggingface_cache:
+  minio_data:
 
 networks:
   the-eye-network:

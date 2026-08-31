@@ -13,6 +13,14 @@ export interface SimilarCaseResult {
 	reasons: string[]
 }
 
+export interface SimilarCasesResponse {
+	caseId: number
+	similarCases: SimilarCaseResult[]
+	/** True when the target has no usable vectors (pending embed, failed job, or model mismatch). */
+	indexIncomplete: boolean
+	embeddingModel: string | null
+}
+
 export const SimilarQuerySchema = z.object({
 	limit: z.coerce.number().min(1).max(100).default(20),
 	alpha: z.coerce.number().min(0).max(1).default(0.4),

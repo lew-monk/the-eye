@@ -18,7 +18,19 @@ mock.module('@workspace/core', () => ({
 	isObjectStorageConfigured: () => true,
 }))
 
-import { DocumentsService } from './service'
+import { contentDispositionHeader, DocumentsService } from './service'
+
+describe('contentDispositionHeader', () => {
+	it('defaults to attachment and strips quotes', () => {
+		expect(contentDispositionHeader('a"b.pdf')).toBe('attachment; filename="ab.pdf"')
+	})
+
+	it('supports inline for in-app preview', () => {
+		expect(contentDispositionHeader('ruling.pdf', 'inline')).toBe(
+			'inline; filename="ruling.pdf"',
+		)
+	})
+})
 
 describe('DocumentsService.getOriginalFile', () => {
 	beforeEach(() => {

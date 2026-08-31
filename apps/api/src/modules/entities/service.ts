@@ -1,6 +1,6 @@
 import { db } from '@workspace/shared'
-import { participants, documents, coreferenceResults, coreferenceClusters, coreferenceMentions } from '@workspace/shared'
-import { eq, and, sql } from 'drizzle-orm'
+import { participants, documents } from '@workspace/shared'
+import { eq, sql } from 'drizzle-orm'
 import { participantRepository, documentRepository, coreferenceRepository } from '@workspace/shared'
 
 interface EntityAppearance {
@@ -61,6 +61,24 @@ export interface EntityDossier {
 	coOccurringEntities: CoOccurring[]
 	mentionContexts: MentionContextItem[]
 	confidence: ConfidenceResult
+}
+
+export interface CoOccurrenceNode {
+	normalizedName: string
+	displayName: string
+	role: string
+	connections: number
+}
+
+export interface CoOccurrenceEdge {
+	source: string
+	target: string
+	weight: number
+}
+
+export interface CoOccurrenceNetwork {
+	nodes: CoOccurrenceNode[]
+	edges: CoOccurrenceEdge[]
 }
 
 export abstract class EntityService {
@@ -231,8 +249,9 @@ export abstract class EntityService {
 			const doc = await documentRepository.findById(p.documentId)
 			if (!doc) continue
 
+			const coref = await coreferenceRepository.findByDocumentId(p.documentId)
 			const fullContent = doc.fullContent as { content?: string } | null
-			const text = fullContent?.content || ''
+			const text = coref?.resolvedText || fullContent?.content || ''
 			if (!text) continue
 
 			const participantMentions = p.mentions || []
@@ -390,5 +409,85 @@ export abstract class EntityService {
 			roles,
 			flags,
 		}
+	}
+
+	static async getCoOccurrenceNetwork(limit = 30): Promise<CoOccurrenceNetwork> {
+		const result = await db.execute(
+			sql`
+				SELECT
+					LEAST(p1.normalized_name, p2.normalized_name) AS "entityA",
+					(
+						SELECT p.name FROM participants p
+						WHERE p.normalized_name = LEAST(p1.normalized_name, p2.normalized_name)
+						ORDER BY p.mention_count DESC NULLS LAST
+						LIMIT 1
+					) AS "nameA",
+					(
+						SELECT p.role FROM participants p
+						WHERE p.normalized_name = LEAST(p1.normalized_name, p2.normalized_name)
+						GROUP BY p.role
+						ORDER BY COUNT(*) DESC
+						LIMIT 1
+					) AS "roleA",
+					GREATEST(p1.normalized_name, p2.normalized_name) AS "entityB",
+					(
+						SELECT p.name FROM participants p
+						WHERE p.normalized_name = GREATEST(p1.normalized_name, p2.normalized_name)
+						ORDER BY p.mention_count DESC NULLS LAST
+						LIMIT 1
+					) AS "nameB",
+					(
+						SELECT p.role FROM participants p
+						WHERE p.normalized_name = GREATEST(p1.normalized_name, p2.normalized_name)
+						GROUP BY p.role
+						ORDER BY COUNT(*) DESC
+						LIMIT 1
+					) AS "roleB",
+					COUNT(DISTINCT p1.document_id)::int AS "docCount"
+				FROM participants p1
+				JOIN participants p2
+					ON p1.document_id = p2.document_id
+					AND p1.normalized_name < p2.normalized_name
+				GROUP BY
+					LEAST(p1.normalized_name, p2.normalized_name),
+					GREATEST(p1.normalized_name, p2.normalized_name)
+				ORDER BY "docCount" DESC
+				LIMIT ${limit}
+			`,
+		)
+
+		const rows = result as any[]
+		const edges: CoOccurrenceEdge[] = rows.map((r) => ({
+			source: r.entityA,
+			target: r.entityB,
+			weight: r.docCount,
+		}))
+
+		const nodeMap = new Map<string, CoOccurrenceNode>()
+		for (const r of rows) {
+			const a = nodeMap.get(r.entityA) ?? {
+				normalizedName: r.entityA,
+				displayName: r.nameA ?? r.entityA,
+				role: r.roleA ?? 'other',
+				connections: 0,
+			}
+			a.connections += 1
+			nodeMap.set(r.entityA, a)
+
+			const b = nodeMap.get(r.entityB) ?? {
+				normalizedName: r.entityB,
+				displayName: r.nameB ?? r.entityB,
+				role: r.roleB ?? 'other',
+				connections: 0,
+			}
+			b.connections += 1
+			nodeMap.set(r.entityB, b)
+		}
+
+		const nodes = Array.from(nodeMap.values()).sort(
+			(a, b) => b.connections - a.connections,
+		)
+
+		return { nodes, edges }
 	}
 }

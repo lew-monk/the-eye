@@ -4,6 +4,7 @@ const mockDocFindById = mock()
 const mockDocAddProcessingLog = mock().mockResolvedValue(undefined)
 const mockCorefStore = mock()
 const mockCorefGetSourceTextHash = mock()
+const mockCorefFindByDocumentId = mock()
 
 mock.module('@workspace/shared', () => ({
 	documentRepository: {
@@ -13,6 +14,7 @@ mock.module('@workspace/shared', () => ({
 	coreferenceRepository: {
 		store: mockCorefStore,
 		getSourceTextHash: mockCorefGetSourceTextHash,
+		findByDocumentId: mockCorefFindByDocumentId,
 	},
 }))
 
@@ -22,6 +24,8 @@ describe('CoreferenceService.getExtractedText', () => {
 	beforeEach(() => {
 		mockDocFindById.mockReset()
 		mockCorefGetSourceTextHash.mockReset()
+		mockCorefFindByDocumentId.mockReset()
+		mockCorefFindByDocumentId.mockResolvedValue(null)
 	})
 
 	it('returns null when document not found', async () => {
@@ -44,7 +48,34 @@ describe('CoreferenceService.getExtractedText', () => {
 		expect(result!.documentType).toBe('judgment')
 		expect(result!.textHash).toBe('abc')
 		expect(result!.fileHash).toBe('def')
+		expect(result!.coreferenceSourceTextHash).toBeNull()
+		expect(result!.existingCoref).toBeNull()
+	})
+
+	it('includes stored coref clusters when present', async () => {
+		mockDocFindById.mockResolvedValue({
+			id: 1, fullContent: { content: 'Hello world' }, documentType: 'judgment',
+			status: 'completed', textHash: 'abc', fileHash: 'def',
+		})
+		mockCorefFindByDocumentId.mockResolvedValue({
+			sourceTextHash: 'hash123',
+			resolvedText: 'Hello [PERSON]',
+			clusters: [
+				{
+					clusterIndex: 0,
+					mentions: [{ text: 'Jane', startPos: 0, endPos: 4 }],
+				},
+			],
+		})
+
+		const result = await CoreferenceService.getExtractedText(1)
+
 		expect(result!.coreferenceSourceTextHash).toBe('hash123')
+		expect(result!.existingCoref).toEqual({
+			resolvedText: 'Hello [PERSON]',
+			clusters: [['Jane']],
+			mentions: [{ text: 'Jane', start: 0, end: 4, cluster_id: 0 }],
+		})
 	})
 
 	it('returns empty text when fullContent is not an object', async () => {

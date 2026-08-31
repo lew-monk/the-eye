@@ -1,4 +1,6 @@
 export * from './utils'
+export * from './embeddings'
+export * from './rag/metrics'
 export * from './types'
 export * from './queue'
 export * from './database'

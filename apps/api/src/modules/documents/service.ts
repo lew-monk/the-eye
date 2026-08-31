@@ -13,6 +13,15 @@ export interface DocumentFileResult {
 	contentLength?: number
 }
 
+export function contentDispositionHeader(
+	filename: string,
+	disposition: 'inline' | 'attachment' = 'attachment',
+): string {
+	const safe = filename.replace(/["\r\n]/g, '')
+	const mode = disposition === 'inline' ? 'inline' : 'attachment'
+	return `${mode}; filename="${safe}"`
+}
+
 export abstract class DocumentsService {
 	static async getOriginalFile(
 		documentId: number,

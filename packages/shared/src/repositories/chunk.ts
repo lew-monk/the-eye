@@ -1,11 +1,15 @@
+import { createHash } from 'node:crypto'
 import { eq, sql } from 'drizzle-orm'
 import { BaseRepository } from './base'
-import { documentChunks, EMBEDDING_COLUMN_DIMENSIONS, type DocumentChunk, type NewDocumentChunk } from '../schemas'
+import { documentChunks, type DocumentChunk, type NewDocumentChunk } from '../schemas'
+import {
+	EMBEDDING_COLUMN_DIMENSIONS,
+	pgvectorLiteral,
+	prepareEmbeddingForColumn,
+} from '../embeddings'
 
-function padToLength(values: number[], targetLength: number): number[] {
-	if (values.length === targetLength) return values
-	if (values.length > targetLength) return values.slice(0, targetLength)
-	return [...values, ...new Array(targetLength - values.length).fill(0)]
+export function hashChunkText(text: string): string {
+	return createHash('sha256').update(text, 'utf8').digest('hex')
 }
 
 export interface ChunkCosineRow {
@@ -33,10 +37,30 @@ export class DocumentChunkRepository extends BaseRepository<DocumentChunk, NewDo
 			.where(eq(documentChunks.documentId, documentId))
 	}
 
-	async updateEmbedding(id: number, embedding: number[]): Promise<void> {
+	override async createMany(data: Omit<NewDocumentChunk, 'id'>[]): Promise<DocumentChunk[]> {
+		const rows = data.map((row) => this.normalizeWrite(row))
+		return super.createMany(rows)
+	}
+
+	async updateEmbedding(
+		id: number,
+		embedding: number[],
+		meta?: { model: string; nativeDimensions?: number; textHash?: string },
+	): Promise<void> {
+		const model = meta?.model
+		const prepared = model
+			? prepareEmbeddingForColumn(embedding, model, meta?.nativeDimensions)
+			: { columnVector: asColumnVector(embedding), nativeDimensions: trailingNonZeroLength(embedding) }
+
 		await this.db
 			.update(documentChunks)
-			.set({ embedding: padToLength(embedding, EMBEDDING_COLUMN_DIMENSIONS) } as any)
+			.set({
+				embedding: prepared.columnVector,
+				embeddingDimensions: prepared.nativeDimensions,
+				...(model ? { embeddingModel: model } : {}),
+				...(meta?.textHash ? { chunkTextHash: meta.textHash } : {}),
+				updatedAt: new Date(),
+			} as any)
 			.where(eq(documentChunks.id, id))
 	}
 
@@ -44,22 +68,70 @@ export class DocumentChunkRepository extends BaseRepository<DocumentChunk, NewDo
 		embedding: number[],
 		excludeDocumentId: number,
 		limit = 50,
+		opts?: { embeddingModel: string; nativeDimensions?: number; currentOnly?: boolean },
 	): Promise<ChunkCosineRow[]> {
-		const vectorStr = `[${embedding.join(',')}]`
+		if (!opts?.embeddingModel) {
+			throw new Error('findSimilarChunks requires embeddingModel so mixed-model rows are not compared')
+		}
+
+		const columnVector = queryColumnVector(embedding, opts.embeddingModel, opts.nativeDimensions)
+		const vectorStr = pgvectorLiteral(columnVector)
+		const currentOnly = opts.currentOnly !== false
+
 		const result = await this.db.execute(
 			sql`
 				SELECT
-					document_id AS "documentId",
-					chunk_index AS "chunkIndex",
-					COALESCE(position_weight, 1.0) AS "positionWeight",
-					1 - (embedding <=> ${vectorStr}::vector) AS "cosineSimilarity"
-				FROM document_chunks
-				WHERE document_id != ${excludeDocumentId}
-					AND embedding IS NOT NULL
-				ORDER BY embedding <=> ${vectorStr}::vector
+					dc.document_id AS "documentId",
+					dc.chunk_index AS "chunkIndex",
+					COALESCE(dc.position_weight, 1.0) AS "positionWeight",
+					1 - (dc.embedding <=> ${vectorStr}::vector) AS "cosineSimilarity"
+				FROM document_chunks dc
+				INNER JOIN documents d ON d.id = dc.document_id
+				WHERE dc.document_id != ${excludeDocumentId}
+					AND dc.embedding IS NOT NULL
+					AND dc.embedding_model = ${opts.embeddingModel}
+					${currentOnly ? sql`AND COALESCE(d.is_current, true) = true` : sql``}
+				ORDER BY dc.embedding <=> ${vectorStr}::vector
 				LIMIT ${limit}
 			`,
 		)
 		return result as unknown as ChunkCosineRow[]
 	}
+
+	private normalizeWrite(row: Omit<NewDocumentChunk, 'id'>): Omit<NewDocumentChunk, 'id'> {
+		const text = typeof row.text === 'string' ? row.text : ''
+		const next: Omit<NewDocumentChunk, 'id'> = {
+			...row,
+			chunkTextHash: row.chunkTextHash || (text ? hashChunkText(text) : row.chunkTextHash),
+		}
+		if (Array.isArray(row.embedding) && row.embedding.length > 0 && row.embeddingModel && row.embeddingModel !== 'none') {
+			const prepared = prepareEmbeddingForColumn(
+				row.embedding,
+				row.embeddingModel,
+				row.embeddingDimensions ?? undefined,
+			)
+			next.embedding = prepared.columnVector as any
+			next.embeddingDimensions = prepared.nativeDimensions
+		}
+		return next
+	}
+}
+
+function asColumnVector(values: number[]): number[] {
+	if (values.length === EMBEDDING_COLUMN_DIMENSIONS) return values
+	if (values.length > EMBEDDING_COLUMN_DIMENSIONS) {
+		throw new Error(`Embedding length ${values.length} exceeds column ${EMBEDDING_COLUMN_DIMENSIONS}`)
+	}
+	return [...values, ...new Array(EMBEDDING_COLUMN_DIMENSIONS - values.length).fill(0)]
+}
+
+function queryColumnVector(values: number[], model: string, nativeDim?: number): number[] {
+	if (values.length === EMBEDDING_COLUMN_DIMENSIONS) return values
+	return prepareEmbeddingForColumn(values, model, nativeDim).columnVector
+}
+
+function trailingNonZeroLength(values: number[]): number {
+	let end = values.length
+	while (end > 0 && values[end - 1] === 0) end--
+	return end
 }

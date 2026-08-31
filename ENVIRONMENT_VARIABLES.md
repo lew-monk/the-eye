@@ -40,7 +40,7 @@ MINIO_ROOT_PASSWORD=minioadmin
 ```
 
 - Console (dev): http://localhost:9001  
-- Download API: `GET /documents/:id/file` (streams original when `storage_key` is set)  
+- Download / preview API: `GET /documents/:id/file?disposition=inline|attachment` (streams original when `storage_key` is set). When `COREF_SERVICE_TOKEN` or `API_SERVICE_TOKEN` is set, the API requires `x-api-key`. The web BFF checks the user session and forwards the token — the web process must have the same token as the API.  
 - Swap to AWS: `STORAGE_PROVIDER=s3`, real credentials, optional `S3_FORCE_PATH_STYLE=false`
 
 ### OCR Confidence Thresholds (Optional)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 from collections import Counter
 from pathlib import Path
@@ -35,10 +36,16 @@ ENTITY_TYPE_MAP: Dict[str, str] = {
 }
 
 
-def load_patterns(path: Path | str) -> List[Dict[str, Any]]:
+def load_patterns_config(path: Path | str) -> tuple[List[Dict[str, Any]], int]:
     with open(path) as f:
-        data = yaml.safe_load(f)
-    return data.get("roles", [])
+        data = yaml.safe_load(f) or {}
+    version = int(data.get("version") or 1)
+    return data.get("roles", []), version
+
+
+def load_patterns(path: Path | str) -> List[Dict[str, Any]]:
+    roles, _ = load_patterns_config(path)
+    return roles
 
 
 def load_titles(path: Path | str) -> Dict[str, List[str]]:
@@ -402,6 +409,8 @@ def chunk_text(
             "text": c,
             "tokenCount": _token_count(c),
             "positionWeight": _resolve_weight(type_weights, i),
+            "chunkTextHash": hashlib.sha256(c.encode("utf-8")).hexdigest(),
+            "parentChunkIndex": None,
         }
         for i, c in enumerate(raw_chunks)
     ]
