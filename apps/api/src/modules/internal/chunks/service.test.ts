@@ -123,6 +123,18 @@ describe('ChunksService.store', () => {
 		expect(mockChunkCreateMany).toHaveBeenCalledWith([])
 	})
 
+	it('passes through null parentChunkIndex', async () => {
+		mockDocFindById.mockResolvedValue({ id: DOC_ID, status: 'processing' })
+		mockChunkCreateMany.mockResolvedValue([{ id: 1 }])
+
+		await ChunksService.store(DOC_ID, [
+			{ chunkIndex: 0, text: 'a', parentChunkIndex: null },
+		], 0, 'none', 'none')
+
+		const rows = mockChunkCreateMany.mock.calls[0]?.[0]
+		expect(rows[0].parentChunkIndex).toBeNull()
+	})
+
 	it('strips empty embedding arrays and keeps provider on rows', async () => {
 		mockDocFindById.mockResolvedValue({ id: DOC_ID, status: 'processing' })
 		mockChunkCreateMany.mockResolvedValue([{ id: 1 }, { id: 2 }])

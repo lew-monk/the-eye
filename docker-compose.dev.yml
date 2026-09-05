@@ -153,6 +153,8 @@ services:
       - ./.env
     environment:
       - OCR_WORKER_CONCURRENCY=${OCR_WORKER_CONCURRENCY:-2}
+      - PDF_EXTRACTOR=${PDF_EXTRACTOR:-azure}
+      - PDF_EXTRACT_FALLBACK=${PDF_EXTRACT_FALLBACK:-azure}
       - STORAGE_PROVIDER=${STORAGE_PROVIDER:-minio}
       - S3_ENDPOINT=${S3_ENDPOINT:-http://minio:9000}
       - S3_REGION=${S3_REGION:-us-east-1}

@@ -25,8 +25,13 @@ COPY apps/eye-web-app/package.json ./apps/eye-web-app/
 # Copy source code
 COPY . .
 
-# Install dependencies and build shared packages
-RUN bun install && bun run build --filter='@workspace/shared' && bun run build --filter='@workspace/core' && bun run build --filter='@workspace/workers' && bun run build --filter='@workspace/eye-web-app'
+# Workspace install + library packages only.
+# Do not `vite build` the web app in this image: compose `web` runs `vite dev`,
+# and a production build here is what surfaces tsr-split parse errors on every rebuild.
+RUN bun install \
+	&& bun run build --filter='@workspace/shared' \
+	&& bun run build --filter='@workspace/core' \
+	&& bun run build --filter='@workspace/workers'
 
 # Web development stage
 FROM base AS web-dev

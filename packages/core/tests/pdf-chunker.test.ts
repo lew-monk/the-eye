@@ -7,6 +7,7 @@ import {
 	shouldSplit,
 	getPdfPageCount,
 	splitPdfByPages,
+	extractPdfPages,
 	reassembleOcrResults,
 	type ChunkOcrResult,
 } from '../src/services/ocr/pdf-chunker'
@@ -43,7 +44,6 @@ describe('shouldSplit', () => {
 		expect(DEFAULT_MAX_PAGES_PER_CHUNK).toBeLessThanOrEqual(100)
 	})
 })
-
 describe('getPdfPageCount', () => {
 	it('returns page count for a multi-page PDF', async () => {
 		const buffer = await makePdf(5)
@@ -117,5 +117,18 @@ describe('reassembleOcrResults', () => {
 			{ pageNumber: 1 },
 			{ pageNumber: 3 },
 		])
+	})
+})
+
+describe('extractPdfPages', () => {
+	it('copies selected pages into a new PDF in order', async () => {
+		const buffer = await makePdf(5)
+		const subset = await extractPdfPages(buffer, [1, 3])
+		expect(await getPdfPageCount(subset)).toBe(2)
+	})
+
+	it('rejects an empty index list', async () => {
+		const buffer = await makePdf(2)
+		await expect(extractPdfPages(buffer, [])).rejects.toThrow(/at least one/)
 	})
 })

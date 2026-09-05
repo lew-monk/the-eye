@@ -346,7 +346,9 @@ Each chunk stores its `chunk_index`. Position weights from `weights.yaml` are re
 | Future | Local (GPU) | `gte-Qwen2-7B-instruct` | 32,768 | 3,584 |
 | Future (legal-specific) | API | `voyage-law-2` | 16,000 | 1,024 |
 
-**Schema uses a fixed pgvector typmod of 3,072 dimensions.** Same-model zero-padding does not change cosine; mixing models in one `<=>` scan does. Store `embedding_model` + `embedding_dimensions`, pad on write/query, filter by model. A model wider than 3072 (e.g. future `gte-Qwen2-7B-instruct` at 3584) needs a new column, not truncation. Start with `nomic-embed-text` (free, works offline), upgrade by flipping `EMBED_PROVIDER` and re-processing.
+**Schema uses a fixed pgvector typmod of 3,072 dimensions.** Same-model zero-padding does not change cosine; mixing models in one `<=>` scan does. Store `embedding_model` + `embedding_dimensions`, pad on write/query, filter by model. A model wider than 3072 (e.g. future `gte-Qwen2-7B-instruct` at 3584) needs a new column, not truncation. Start with `nomic-embed-text` (free, works offline), upgrade by flipping `EMBEDDING_PROVIDER` and re-processing.
+
+Workers call an `EmbeddingProvider` port (`openai` default, `ollama` for local nomic). Hash-skip and DB writes stay in the handler.
 
 ### Bag-of-Chunks Similarity
 

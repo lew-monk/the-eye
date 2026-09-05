@@ -453,62 +453,18 @@ function NetworkPage() {
 					</aside>
 
 					<main className="min-h-[55vh] lg:min-h-0 min-w-0 relative">
-						{!activeFocus ? (
-							<div className="h-full flex items-center justify-center">
-								<span className="font-mono text-body text-outline">NO_CASES</span>
-							</div>
-						) : isLoading || !network ? (
-							<div className="h-full flex items-center justify-center gap-2">
-								<StatusDot variant="muted" size="md" pulse />
-								<span className="font-mono text-body text-outline">LOADING_NETWORK</span>
-							</div>
-						) : viewMode === "list" ? (
-							<div className="h-full overflow-y-auto p-4 space-y-1">
-								{graph.nodes
-									.slice()
-									.sort(
-										(a, b) =>
-											(b.relevanceToFocus ?? b.importance ?? 0) -
-											(a.relevanceToFocus ?? a.importance ?? 0),
-									)
-									.map((n) => (
-										<button
-											key={n.id}
-											type="button"
-											onClick={() => setSelectedId(n.id)}
-											className={`w-full text-left px-3 py-2 border-l-2 ${
-												selectedId === n.id
-													? "border-primary bg-primary/[0.06]"
-													: "border-transparent hover:bg-surface-container-high"
-											}`}
-										>
-											<div className="font-mono text-body text-on-surface">{n.label}</div>
-											<div className="font-mono text-meta text-outline">
-												{n.kind === "entity"
-													? "Person / entity"
-													: n.kind === "document"
-														? "Document"
-														: n.kind === "case"
-															? "Case"
-															: n.kind.replace(/_/g, " ")}
-												{" · "}
-												relevance {Math.round((n.relevanceToFocus ?? n.importance ?? 0) * 100)}
-											</div>
-										</button>
-									))}
-							</div>
-						) : (
-							<IsoNetworkScene
-								nodes={graph.nodes}
-								edges={graph.edges}
-								selectedId={selectedId}
-								focusId={network.focusId}
-								onSelect={setSelectedId}
-								onEnter={goInside}
-								catalog={fullGraph.nodes}
-								onAdd={(id) => setBurstIds((prev) => [...new Set([...prev, id])])}
-							/>
-						)}
+						<NetworkBoard
+							activeFocus={activeFocus}
+							isLoading={isLoading}
+							network={network}
+							viewMode={viewMode}
+							graph={graph}
+							fullGraph={fullGraph}
+							selectedId={selectedId}
+							onSelect={setSelectedId}
+							onEnter={goInside}
+							onAdd={(id) => setBurstIds((prev) => [...new Set([...prev, id])])}
+						/>
 					</main>
 
 					<aside className="min-h-0 overflow-y-auto border-l border-outline-variant/30 bg-surface flex flex-col">
@@ -538,50 +494,24 @@ function NetworkPage() {
 						</div>
 
 						<div className="p-5 flex-1">
-							{!selected ? (
-								<p className="font-mono text-body text-outline reading">
-									Pin an entity on the board. Distance is how tightly it connects to
-									what you are inspecting. Bigger means mentioned more often.
-								</p>
-							) : tab === "what" ? (
-								<WhatThisIs
-									node={selected}
-									network={network}
-									activeCase={cases.find((c) => c.id === relationCaseId)}
-									relations={relations}
-									isFocus={selected.id === network?.focusId}
-									expanding={expanding}
-									onEnter={() => goInside(selected)}
-									onExpand={() => void expandNode(selected)}
-									onBurst={burstSelected}
-								/>
-							) : (
-								<div className="space-y-1">
-									<div className="font-mono text-meta uppercase tracking-[0.12em] text-outline mb-2">
-										{neighbors.length} LINKED
-									</div>
-									{neighbors.length === 0 ? (
-										<p className="font-mono text-body text-outline">No connections on this entity.</p>
-									) : (
-										neighbors.map((n) => (
-											<LegendRow
-												key={n.id}
-												letter={kindLetter(n.kind)}
-												label={n.label}
-												meta={n.kind.replace(/_/g, " ")}
-												onClick={() => {
-													setSelectedId(n.id);
-													if (!graph.nodes.some((x) => x.id === n.id) && selected) {
-														setBurstIds((prev) => [
-															...new Set([...prev, n.id, selected.id]),
-														]);
-													}
-												}}
-											/>
-										))
-									)}
-								</div>
-							)}
+							<InspectorPanel
+								selected={selected}
+								tab={tab}
+								network={network}
+								activeCase={cases.find((c) => c.id === relationCaseId)}
+								relations={relations}
+								neighbors={neighbors}
+								expanding={expanding}
+								onEnter={goInside}
+								onExpand={expandNode}
+								onBurst={burstSelected}
+								onSelect={(id) => {
+									setSelectedId(id);
+									if (!graph.nodes.some((x) => x.id === id) && selected) {
+										setBurstIds((prev) => [...new Set([...prev, id, selected.id])]);
+									}
+								}}
+							/>
 							{mentionContexts.length > 0 && (
 								<div className="mt-4 pt-4 border-t border-outline-variant/20 space-y-3">
 									<div className="font-mono text-meta uppercase tracking-[0.12em] text-outline">
@@ -611,6 +541,180 @@ function NetworkPage() {
 				</div>
 			</div>
 		</AppShell>
+	);
+}
+
+function nodeKindLabel(kind: CaseNetworkNode["kind"]): string {
+	if (kind === "entity") return "Person / entity";
+	if (kind === "document") return "Document";
+	if (kind === "case") return "Case";
+	return kind.replace(/_/g, " ");
+}
+
+function NetworkBoard({
+	activeFocus,
+	isLoading,
+	network,
+	viewMode,
+	graph,
+	fullGraph,
+	selectedId,
+	onSelect,
+	onEnter,
+	onAdd,
+}: {
+	activeFocus: FocusInput | null;
+	isLoading: boolean;
+	network: CaseNetworkData | null | undefined;
+	viewMode: "iso" | "list";
+	graph: { nodes: CaseNetworkNode[]; edges: CaseNetworkEdge[]; hidden: number };
+	fullGraph: { nodes: CaseNetworkNode[]; edges: CaseNetworkEdge[] };
+	selectedId: string | null;
+	onSelect: (id: string) => void;
+	onEnter: (node: CaseNetworkNode) => void;
+	onAdd: (id: string) => void;
+}) {
+	if (!activeFocus) {
+		return (
+			<div className="h-full flex items-center justify-center">
+				<span className="font-mono text-body text-outline">NO_CASES</span>
+			</div>
+		);
+	}
+
+	if (isLoading || !network) {
+		return (
+			<div className="h-full flex items-center justify-center gap-2">
+				<StatusDot variant="muted" size="md" pulse />
+				<span className="font-mono text-body text-outline">LOADING_NETWORK</span>
+			</div>
+		);
+	}
+
+	if (viewMode === "list") {
+		const rows = graph.nodes.slice().sort((a, b) => {
+			const av = a.relevanceToFocus ?? a.importance ?? 0;
+			const bv = b.relevanceToFocus ?? b.importance ?? 0;
+			return bv - av;
+		});
+		return (
+			<div className="h-full overflow-y-auto p-4 space-y-1">
+				{rows.map((n) => (
+					<button
+						key={n.id}
+						type="button"
+						onClick={() => onSelect(n.id)}
+						className={`w-full text-left px-3 py-2 border-l-2 ${
+							selectedId === n.id
+								? "border-primary bg-primary/[0.06]"
+								: "border-transparent hover:bg-surface-container-high"
+						}`}
+					>
+						<div className="font-mono text-body text-on-surface">{n.label}</div>
+						<div className="font-mono text-meta text-outline">
+							{nodeKindLabel(n.kind)}
+							{" · "}
+							relevance {Math.round((n.relevanceToFocus ?? n.importance ?? 0) * 100)}
+						</div>
+					</button>
+				))}
+			</div>
+		);
+	}
+
+	return (
+		<IsoNetworkScene
+			nodes={graph.nodes}
+			edges={graph.edges}
+			selectedId={selectedId}
+			focusId={network.focusId}
+			onSelect={onSelect}
+			onEnter={onEnter}
+			catalog={fullGraph.nodes}
+			onAdd={onAdd}
+		/>
+	);
+}
+
+function InspectorPanel({
+	selected,
+	tab,
+	network,
+	activeCase,
+	relations,
+	neighbors,
+	graphNodeIds,
+	expanding,
+	onEnter,
+	onExpand,
+	onBurst,
+	onSelect,
+}: {
+	selected: CaseNetworkNode | null;
+	tab: "what" | "links";
+	network: CaseNetworkData | null | undefined;
+	activeCase: CaseData | undefined;
+	relations: CaseRelationData[];
+	neighbors: CaseNetworkNode[];
+	expanding: boolean;
+	onEnter: (node: CaseNetworkNode) => void;
+	onExpand: (node: CaseNetworkNode) => void | Promise<void>;
+	onBurst: () => void;
+	onSelect: (id: string) => void;
+}) {
+	if (!selected) {
+		return (
+			<p className="font-mono text-body text-outline reading">
+				Pin an entity on the board. Distance is how tightly it connects to
+				what you are inspecting. Bigger means mentioned more often.
+			</p>
+		);
+	}
+
+	if (tab === "what") {
+		return (
+			<WhatThisIs
+				node={selected}
+				network={network}
+				activeCase={activeCase}
+				relations={relations}
+				isFocus={selected.id === network?.focusId}
+				expanding={expanding}
+				onEnter={() => onEnter(selected)}
+				onExpand={() => {
+					void onExpand(selected);
+				}}
+				onBurst={onBurst}
+			/>
+		);
+	}
+
+	if (neighbors.length === 0) {
+		return (
+			<div className="space-y-1">
+				<div className="font-mono text-meta uppercase tracking-[0.12em] text-outline mb-2">
+					0 LINKED
+				</div>
+				<p className="font-mono text-body text-outline">No connections on this entity.</p>
+			</div>
+		);
+	}
+
+	return (
+		<div className="space-y-1">
+			<div className="font-mono text-meta uppercase tracking-[0.12em] text-outline mb-2">
+				{neighbors.length} LINKED
+			</div>
+			{neighbors.map((n) => (
+				<LegendRow
+					key={n.id}
+					letter={kindLetter(n.kind)}
+					label={n.label}
+					meta={n.kind.replace(/_/g, " ")}
+					onClick={() => onSelect(n.id)}
+				/>
+			))}
+		</div>
 	);
 }
 
@@ -739,7 +843,7 @@ function WorkActions({
 					BURST_NEIGHBORS
 				</Button>
 			)}
-			<Button>
+			<Button
 				variant="ghost"
 				size="sm"
 				brackets={false}

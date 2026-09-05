@@ -1,8 +1,17 @@
 # PDF → text pipeline (locked)
 
-**Status:** design locked. Not implemented yet. Feature flag when it ships: `PDF_EXTRACTOR=azure | pymupdf4llm-hybrid`.
+**Status:** implemented behind a strategy flag. Default remains the current Azure pipeline.
 
-**Locked extractor:** [PyMuPDF4LLM](https://pymupdf.readthedocs.io/en/latest/pymupdf4llm/) owns native text, layout, headers, tables, and “this page needs OCR.” **`ocr_function` = Azure Document Intelligence.** Digital pages never leave the box. Scan / garbled regions only hit Azure. Tesseract is not the production OCR path.
+| `PDF_EXTRACTOR` | Behaviour |
+|---|---|
+| `azure` (default, unset) | Unchanged: `pdf-lib` split + Azure `prebuilt-read` on the whole file |
+| `pymupdf4llm-hybrid` | PyMuPDF native text per page; **pdf-lib** copies `needsOcr` pages; those pages go to Azure; merge |
+
+`PDF_EXTRACT_FALLBACK=azure` (default): if Python/PyMuPDF fails, the run uses the azure strategy. Set `none` to fail instead of reverting.
+
+**Locked extractor:** [PyMuPDF4LLM](https://pymupdf.readthedocs.io/en/latest/pymupdf4llm/) owns native text, layout, headers, tables, and “this page needs OCR.” Scan pages are copied with **pdf-lib** and sent to **Azure Document Intelligence**. Digital pages never leave the box. Tesseract is not the production OCR path.
+
+**Revert:** unset `PDF_EXTRACTOR` or set `PDF_EXTRACTOR=azure`. Hybrid failures also revert to Azure unless `PDF_EXTRACT_FALLBACK=none`.
 
 Related: [rag.md](./rag.md) (retrieval / eval), [ARCHITECTURE.md](./ARCHITECTURE.md) (coref + similar-cases).
 

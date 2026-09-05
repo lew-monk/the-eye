@@ -15,6 +15,7 @@ import {
 	splitPdfByPages,
 	type ChunkOcrResult,
 } from "./services/ocr/pdf-chunker";
+import { createPdfExtractStrategy, resolvePdfExtractorName } from "./services/ocr/extract";
 import { DocumentStatus, PipelineStage, logPipelineStage, pipelineLog } from "./utils/pipeline-log";
 
 const AzureConfigSchema = z.object({
@@ -191,108 +192,124 @@ export class AzureOCRService {
 		return mapped;
 	}
 
+	/**
+	 * Current Azure-only path (pdf-lib split + Document Intelligence).
+	 * Used by the azure strategy and for hybrid scan-page batches.
+	 */
+	async analyzeDocument(documentId: number, fileBuffer: Buffer): Promise<OCRResult> {
+		const maxBytes = getMaxChunkBytes();
+		const maxPages = getMaxPagesPerChunk();
+
+		const modelId = ModelManager.getModelForDocumentType("document");
+		let ocrResult: OCRResult;
+
+		if (isPdfBuffer(fileBuffer)) {
+			const pageCount = await getPdfPageCount(fileBuffer);
+			const split = shouldSplit(fileBuffer.byteLength, pageCount, maxBytes, maxPages);
+
+			await logPipelineStage(documentId, PipelineStage.OCR_INSPECTING, {
+				pageCount,
+				bytes: fileBuffer.byteLength,
+				shouldSplit: split,
+				modelId,
+				maxChunkBytes: maxBytes,
+				maxChunkPages: maxPages,
+				apiVersion: this.apiVersion,
+			});
+
+			if (split) {
+				await logPipelineStage(documentId, PipelineStage.OCR_SPLIT_STARTED, {
+					pageCount,
+					bytes: fileBuffer.byteLength,
+					maxPagesPerChunk: maxPages,
+					maxBytesPerChunk: maxBytes,
+				});
+
+				const chunks = await splitPdfByPages(
+					fileBuffer,
+					maxPages,
+					(progress) => {
+						pipelineLog(documentId, PipelineStage.OCR_SPLIT_PROGRESS, progress as Record<string, unknown>);
+					},
+					maxBytes,
+				);
+
+				const oversized = chunks.filter((c) => c.buffer.byteLength > maxBytes);
+				if (oversized.length > 0) {
+					throw new Error(
+						`${oversized.length} chunk(s) still exceed ${maxBytes} bytes after split`,
+					);
+				}
+
+				await logPipelineStage(documentId, PipelineStage.OCR_SPLIT_DONE, {
+					chunkCount: chunks.length,
+					pageOffsets: chunks.map((c) => c.pageOffset),
+					pageCounts: chunks.map((c) => c.pageCount),
+					chunkBytes: chunks.map((c) => c.buffer.byteLength),
+					maxChunkBytes: maxBytes,
+				});
+
+				const chunkResults: ChunkOcrResult[] = [];
+				for (let i = 0; i < chunks.length; i++) {
+					const chunk = chunks[i]!;
+					chunkResults.push(
+						await this.analyzeBuffer(documentId, chunk.buffer, modelId, {
+							chunkIndex: i,
+							chunkTotal: chunks.length,
+							pageOffset: chunk.pageOffset,
+							pageCount: chunk.pageCount,
+						}),
+					);
+				}
+				ocrResult = reassembleOcrResults(chunkResults, chunks, documentId.toString());
+				await logPipelineStage(documentId, PipelineStage.OCR_REASSEMBLED, {
+					chunkCount: chunks.length,
+					contentLength: ocrResult.content.length,
+					confidence: ocrResult.confidence,
+				});
+			} else {
+				await logPipelineStage(documentId, PipelineStage.OCR_SINGLE, {
+					pageCount,
+					bytes: fileBuffer.byteLength,
+					modelId,
+				});
+				ocrResult = await this.analyzeBuffer(documentId, fileBuffer, modelId);
+			}
+		} else {
+			if (fileBuffer.byteLength > maxBytes) {
+				throw new Error(
+					`Non-PDF file is ${fileBuffer.byteLength} bytes > Azure max ${maxBytes}. Compress or upgrade tier.`,
+				);
+			}
+			await logPipelineStage(documentId, PipelineStage.OCR_SINGLE, {
+				bytes: fileBuffer.byteLength,
+				modelId,
+				isPdf: false,
+			});
+			ocrResult = await this.analyzeBuffer(documentId, fileBuffer, modelId);
+		}
+
+		return ocrResult;
+	}
+
 	async processDocumentFromBuffer(documentId: number, fileBuffer: Buffer): Promise<OCRResult> {
 		const started = Date.now();
 		const maxBytes = getMaxChunkBytes();
 		const maxPages = getMaxPagesPerChunk();
 
 		try {
+			const extractor = resolvePdfExtractorName();
 			await logPipelineStage(documentId, PipelineStage.OCR_STARTED, {
 				bytes: fileBuffer.byteLength,
 				isPdf: isPdfBuffer(fileBuffer),
 				apiVersion: this.apiVersion,
 				maxChunkBytes: maxBytes,
 				maxChunkPages: maxPages,
+				extractor,
 			});
 
-			const modelId = ModelManager.getModelForDocumentType("document");
-			let ocrResult: OCRResult;
-
-			if (isPdfBuffer(fileBuffer)) {
-				const pageCount = await getPdfPageCount(fileBuffer);
-				const split = shouldSplit(fileBuffer.byteLength, pageCount, maxBytes, maxPages);
-
-				await logPipelineStage(documentId, PipelineStage.OCR_INSPECTING, {
-					pageCount,
-					bytes: fileBuffer.byteLength,
-					shouldSplit: split,
-					modelId,
-					maxChunkBytes: maxBytes,
-					maxChunkPages: maxPages,
-					apiVersion: this.apiVersion,
-				});
-
-				if (split) {
-					await logPipelineStage(documentId, PipelineStage.OCR_SPLIT_STARTED, {
-						pageCount,
-						bytes: fileBuffer.byteLength,
-						maxPagesPerChunk: maxPages,
-						maxBytesPerChunk: maxBytes,
-					});
-
-					const chunks = await splitPdfByPages(
-						fileBuffer,
-						maxPages,
-						(progress) => {
-							pipelineLog(documentId, PipelineStage.OCR_SPLIT_PROGRESS, progress as Record<string, unknown>);
-						},
-						maxBytes,
-					);
-
-					const oversized = chunks.filter((c) => c.buffer.byteLength > maxBytes);
-					if (oversized.length > 0) {
-						throw new Error(
-							`${oversized.length} chunk(s) still exceed ${maxBytes} bytes after split`,
-						);
-					}
-
-					await logPipelineStage(documentId, PipelineStage.OCR_SPLIT_DONE, {
-						chunkCount: chunks.length,
-						pageOffsets: chunks.map((c) => c.pageOffset),
-						pageCounts: chunks.map((c) => c.pageCount),
-						chunkBytes: chunks.map((c) => c.buffer.byteLength),
-						maxChunkBytes: maxBytes,
-					});
-
-					const chunkResults: ChunkOcrResult[] = [];
-					for (let i = 0; i < chunks.length; i++) {
-						const chunk = chunks[i]!;
-						chunkResults.push(
-							await this.analyzeBuffer(documentId, chunk.buffer, modelId, {
-								chunkIndex: i,
-								chunkTotal: chunks.length,
-								pageOffset: chunk.pageOffset,
-								pageCount: chunk.pageCount,
-							}),
-						);
-					}
-					ocrResult = reassembleOcrResults(chunkResults, chunks, documentId.toString());
-					await logPipelineStage(documentId, PipelineStage.OCR_REASSEMBLED, {
-						chunkCount: chunks.length,
-						contentLength: ocrResult.content.length,
-						confidence: ocrResult.confidence,
-					});
-				} else {
-					await logPipelineStage(documentId, PipelineStage.OCR_SINGLE, {
-						pageCount,
-						bytes: fileBuffer.byteLength,
-						modelId,
-					});
-					ocrResult = await this.analyzeBuffer(documentId, fileBuffer, modelId);
-				}
-			} else {
-				if (fileBuffer.byteLength > maxBytes) {
-					throw new Error(
-						`Non-PDF file is ${fileBuffer.byteLength} bytes > Azure max ${maxBytes}. Compress or upgrade tier.`,
-					);
-				}
-				await logPipelineStage(documentId, PipelineStage.OCR_SINGLE, {
-					bytes: fileBuffer.byteLength,
-					modelId,
-					isPdf: false,
-				});
-				ocrResult = await this.analyzeBuffer(documentId, fileBuffer, modelId);
-			}
+			const strategy = createPdfExtractStrategy((id, buf) => this.analyzeDocument(id, buf));
+			const ocrResult = await strategy.extract(documentId, fileBuffer);
 
 			await logPipelineStage(documentId, PipelineStage.OCR_COMPLETED, {
 				ms: Date.now() - started,

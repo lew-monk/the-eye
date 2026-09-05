@@ -30,15 +30,17 @@ COREF_MODEL_VERSION = os.getenv("COREF_MODEL_VERSION", "fastcoref-2.1.6")
 COREF_MAX_CHARS = int(os.getenv("COREF_MAX_CHARS", "200000"))
 
 # Embed cap vs retrieval pack size. Short filings used to become one giant chunk
-# (the embed window). Retrieval wants paragraph-scale children (default 512).
+# (the embed window). Retrieval wants paragraph-scale children (default 512)
+# that point at a parent window via parentChunkIndex.
 EMBEDDING_MAX_TOKENS = int(os.getenv("EMBEDDING_MAX_TOKENS", "8192"))
 _raw_chunk_max = int(os.getenv("PARALEGAL_CHUNK_MAX_TOKENS", str(EMBEDDING_MAX_TOKENS)))
 _retrieval_tokens = int(os.getenv("PARALEGAL_RETRIEVAL_CHUNK_TOKENS", "512"))
+PARENT_CHUNK_MAX_TOKENS = min(_raw_chunk_max, EMBEDDING_MAX_TOKENS)
 PARALEGAL_CHUNK_MAX_TOKENS = min(_raw_chunk_max, _retrieval_tokens, EMBEDDING_MAX_TOKENS)
 if _raw_chunk_max > EMBEDDING_MAX_TOKENS:
     print(
         f"⚠️  [CONFIG] PARALEGAL_CHUNK_MAX_TOKENS={_raw_chunk_max} exceeds "
-        f"EMBEDDING_MAX_TOKENS={EMBEDDING_MAX_TOKENS}; clamping to {PARALEGAL_CHUNK_MAX_TOKENS}",
+        f"EMBEDDING_MAX_TOKENS={EMBEDDING_MAX_TOKENS}; clamping to {PARENT_CHUNK_MAX_TOKENS}",
         flush=True,
     )
 _ENV_EXTRACTION_VERSION = os.getenv("PARALEGAL_EXTRACTION_VERSION")
@@ -297,7 +299,7 @@ async def process_job(job, job_token) -> Optional[Dict[str, Any]]:
                 post_coref_result(document_id, payload)
                 _doc_log(document_id, "coref_completed", ms=elapsed_ms)
             except Exception as e:
-                _doc_log(document_id, "coref_failed", stage="post_coref", error=str(e))
+                _doc_log(document_id, "coref_failed", step="post_coref", error=str(e))
                 raise
 
         participants = extract_participants(
@@ -322,7 +324,7 @@ async def process_job(job, job_token) -> Optional[Dict[str, Any]]:
                 participants_posted = True
                 _doc_log(document_id, "coref_participants_posted", count=len(participants))
             except Exception as e:
-                _doc_log(document_id, "coref_failed", stage="post_participants", error=str(e))
+                _doc_log(document_id, "coref_failed", step="post_participants", error=str(e))
 
         normalized_text = normalize_text(resolved_text, participants, mentions)
         _doc_log(document_id, "coref_normalized", chars=len(normalized_text))
@@ -332,13 +334,17 @@ async def process_job(job, job_token) -> Optional[Dict[str, Any]]:
             PARALEGAL_CHUNK_MAX_TOKENS,
             weights=WEIGHTS,
             document_type=document_type,
+            parent_max_tokens=PARENT_CHUNK_MAX_TOKENS,
         )
         token_counts = [c.get("tokenCount", 0) for c in paralegal_chunks]
+        child_count = sum(1 for c in paralegal_chunks if "parentChunkIndex" in c)
         _doc_log(
             document_id,
             "coref_chunks",
             count=len(paralegal_chunks),
+            children=child_count,
             maxTokens=PARALEGAL_CHUNK_MAX_TOKENS,
+            parentMaxTokens=PARENT_CHUNK_MAX_TOKENS,
             maxChunkTokens=max(token_counts) if token_counts else 0,
             totalTokens=sum(token_counts),
         )
@@ -355,7 +361,7 @@ async def process_job(job, job_token) -> Optional[Dict[str, Any]]:
                     note="chunks saved; embeddings queued asynchronously",
                 )
             except Exception as e:
-                _doc_log(document_id, "coref_failed", stage="post_chunks", error=str(e))
+                _doc_log(document_id, "coref_failed", step="post_chunks", error=str(e))
         else:
             _doc_log(document_id, "coref_chunks_empty", note="nothing to post")
 
@@ -400,7 +406,7 @@ async def main() -> None:
     print(f"📝 [CONFIG] Coref max chars: {COREF_MAX_CHARS}")
     print(
         f"📝 [CONFIG] Paralegal chunk max tokens: {PARALEGAL_CHUNK_MAX_TOKENS} "
-        f"(retrieval {_retrieval_tokens}, embed cap {EMBEDDING_MAX_TOKENS})"
+        f"(retrieval {_retrieval_tokens}, parent {PARENT_CHUNK_MAX_TOKENS}, embed cap {EMBEDDING_MAX_TOKENS})"
     )
     print(f"📝 [CONFIG] API base URL: {API_BASE_URL}")
     print(f"📝 [CONFIG] Service token set: {bool(API_TOKEN)}")

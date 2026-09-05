@@ -76,6 +76,26 @@ export async function getPdfPageCount(buffer: Buffer): Promise<number> {
 	return doc.getPageCount()
 }
 
+/** Copy 0-based page indices into a new PDF (order preserved). Used by the hybrid extractor. */
+export async function extractPdfPages(buffer: Buffer, pageIndices: number[]): Promise<Buffer> {
+	if (pageIndices.length === 0) {
+		throw new Error('extractPdfPages requires at least one page index')
+	}
+	const source = await PDFDocument.load(buffer, { ignoreEncryption: true })
+	const total = source.getPageCount()
+	for (const idx of pageIndices) {
+		if (!Number.isInteger(idx) || idx < 0 || idx >= total) {
+			throw new Error(`Page index ${idx} is out of range 0..${total - 1}`)
+		}
+	}
+	const out = await PDFDocument.create()
+	const copied = await out.copyPages(source, pageIndices)
+	for (const page of copied) {
+		out.addPage(page)
+	}
+	return Buffer.from(await out.save())
+}
+
 async function buildChunkBuffer(
 	source: PDFDocument,
 	start: number,

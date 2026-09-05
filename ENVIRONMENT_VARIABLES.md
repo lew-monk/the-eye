@@ -17,6 +17,33 @@ AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=https://your-resource.cognitiveservices.azu
 AZURE_DOCUMENT_INTELLIGENCE_KEY=your-api-key-here
 ```
 
+### PDF extract strategy
+```bash
+# azure (default, current pipeline) | pymupdf4llm-hybrid
+PDF_EXTRACTOR=azure
+# On hybrid failure, run the azure strategy (set none to fail closed)
+PDF_EXTRACT_FALLBACK=azure
+PDF_EXTRACT_PYTHON=python3
+# PDF_EXTRACT_SCRIPT=packages/coreference-worker/src/pdf_extract.py
+```
+
+Revert anytime: `PDF_EXTRACTOR=azure` (or unset). Hybrid still falls back to Azure if Python/PyMuPDF is missing unless `PDF_EXTRACT_FALLBACK=none`.
+
+### Embeddings
+```bash
+# openai (default, production) | ollama
+EMBEDDING_PROVIDER=openai
+EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_DIMENSIONS=1536
+# Dev local models:
+# EMBEDDING_PROVIDER=ollama
+# EMBEDDING_MODEL=nomic-embed-text
+# EMBEDDING_DIMENSIONS=768
+# OLLAMA_HOST=http://127.0.0.1:11434
+```
+
+The worker talks to an `EmbeddingProvider` port (`packages/workers/src/embedding`). Hash-skip and Postgres writes stay in the handler, not in the provider.
+
 ### Redis (for BullMQ queues)
 ```bash
 REDIS_URL=redis://localhost:6379
