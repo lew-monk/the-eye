@@ -37,3 +37,18 @@ export const authMiddleware = requirePermission({
 	resource: 'documents',
 	actions: ['*'],
 })
+
+/** Shared worker/BFF token. If neither env is set, the route stays open (local dev). */
+export const requireServiceToken = () => {
+	return async (c: Pick<Context, 'headers' | 'status'>) => {
+		const expected = process.env.API_SERVICE_TOKEN || process.env.COREF_SERVICE_TOKEN
+		if (!expected) return
+
+		const header = c.headers['x-api-key']
+		const bearer = c.headers.authorization?.replace(/^Bearer\s+/i, '')
+		const got = header || bearer
+		if (got !== expected) {
+			return c.status(401, 'Unauthorized')
+		}
+	}
+}

@@ -7,4 +7,6 @@ requests==2.32.3
 pyyaml>=6.0
 semchunk>=4.0.0
 tiktoken>=0.13.0
+pymupdf>=1.24.0
+pymupdf4llm>=0.0.17
 en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl

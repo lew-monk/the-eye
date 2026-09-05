@@ -5,6 +5,7 @@ import { upload } from './upload'
 import { internal } from './internal'
 import { casesRouter } from './cases'
 import { entitiesRouter } from './entities'
+import { documentsRouter } from './documents'
 import { ChunksService } from './internal/chunks/service'
 import { CasesService } from './cases/service'
 import { participantRepository, chunkRepository, documentRepository } from '@workspace/shared'
@@ -16,6 +17,39 @@ export const modules = new Elysia()
 	.use(internal)
 	.use(casesRouter)
 	.use(entitiesRouter)
+	.use(documentsRouter)
+	.get(
+		'/network/focus',
+		async ({ query, set }) => {
+			const type = query.type
+			if (
+				type !== 'case' &&
+				type !== 'entity' &&
+				type !== 'document' &&
+				type !== 'role'
+			) {
+				set.status = 400
+				return { error: 'Invalid focus type' }
+			}
+			const network = await CasesService.getFocusNetwork({
+				type,
+				id: query.id,
+				caseId: query.caseId,
+			})
+			if (!network) {
+				set.status = 404
+				return { error: 'Network not found' }
+			}
+			return { data: network }
+		},
+		{
+			query: t.Object({
+				type: t.String(),
+				id: t.String(),
+				caseId: t.Optional(t.Numeric()),
+			}),
+		},
+	)
 	.get(
 		'/documents/stats',
 		async () => {
@@ -59,30 +93,36 @@ export const modules = new Elysia()
 	.get(
 		'/cases/:id/participants',
 		async ({ params, set }) => {
-			const documentId = Number(params.id)
-			if (Number.isNaN(documentId)) {
+			const caseId = Number(params.id)
+			if (Number.isNaN(caseId)) {
 				set.status = 400
 				return { error: 'Invalid case id' }
 			}
-			const data = await participantRepository.findByDocumentId(documentId)
+			const data = await CasesService.getCaseEntities(caseId)
 			return { data }
 		},
 	)
 	.get(
 		'/cases/:id/participants/:participantId/context',
 		async ({ params, set }) => {
-			const documentId = Number(params.id)
+			const caseId = Number(params.id)
 			const participantId = Number(params.participantId)
-			if (Number.isNaN(documentId) || Number.isNaN(participantId)) {
+			if (Number.isNaN(caseId) || Number.isNaN(participantId)) {
 				set.status = 400
 				return { error: 'Invalid case or participant id' }
 			}
 			const participant = await participantRepository.findById(participantId)
-			if (!participant || participant.documentId !== documentId) {
+			if (!participant) {
 				set.status = 404
 				return { error: 'Participant not found in this case' }
 			}
-			return { data: participant }
+			const docs = await documentRepository.findByCaseId(caseId)
+			if (!docs.some((d) => d.id === participant.documentId)) {
+				set.status = 404
+				return { error: 'Participant not found in this case' }
+			}
+			const contexts = await CasesService.getMentionContexts(participantId)
+			return { data: contexts }
 		},
 	)
 	.get(

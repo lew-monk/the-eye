@@ -1,4 +1,4 @@
-import { pgTable, text, integer, jsonb, timestamp, serial, real, index } from 'drizzle-orm/pg-core'
+import { pgTable, text, integer, jsonb, timestamp, serial, real, index, boolean } from 'drizzle-orm/pg-core'
 import { cases } from './cases'
 
 export const documents = pgTable('documents', {
@@ -26,6 +26,11 @@ export const documents = pgTable('documents', {
 	fileHash: text('file_hash'),
 	textHash: text('text_hash'),
 
+	// Object storage (original file)
+	storageKey: text('storage_key'),
+	storageBucket: text('storage_bucket'),
+	contentType: text('content_type'),
+
 	// Status
 	status: text('status').default('pending').notNull(),
 	errorMessage: text('error_message'),
@@ -35,6 +40,8 @@ export const documents = pgTable('documents', {
 	embeddingVersion: integer('embedding_version').default(1),
 	embeddingProvider: text('embedding_provider'),
 	embeddingModel: text('embedding_model'),
+	isCurrent: boolean('is_current').default(true).notNull(),
+	supersededBy: integer('superseded_by'),
 }, (table) => ({
 	statusIdx: index('documents_status_idx').on(table.status),
 	documentTypeIdx: index('documents_type_idx').on(table.documentType),

@@ -17,10 +17,58 @@ AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=https://your-resource.cognitiveservices.azu
 AZURE_DOCUMENT_INTELLIGENCE_KEY=your-api-key-here
 ```
 
+### PDF extract strategy
+```bash
+# azure (default, current pipeline) | pymupdf4llm-hybrid
+PDF_EXTRACTOR=azure
+# On hybrid failure, run the azure strategy (set none to fail closed)
+PDF_EXTRACT_FALLBACK=azure
+PDF_EXTRACT_PYTHON=python3
+# PDF_EXTRACT_SCRIPT=packages/coreference-worker/src/pdf_extract.py
+```
+
+Revert anytime: `PDF_EXTRACTOR=azure` (or unset). Hybrid still falls back to Azure if Python/PyMuPDF is missing unless `PDF_EXTRACT_FALLBACK=none`.
+
+### Embeddings
+```bash
+# openai (default, production) | ollama
+EMBEDDING_PROVIDER=openai
+EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_DIMENSIONS=1536
+# Dev local models:
+# EMBEDDING_PROVIDER=ollama
+# EMBEDDING_MODEL=nomic-embed-text
+# EMBEDDING_DIMENSIONS=768
+# OLLAMA_HOST=http://127.0.0.1:11434
+```
+
+The worker talks to an `EmbeddingProvider` port (`packages/workers/src/embedding`). Hash-skip and Postgres writes stay in the handler, not in the provider.
+
 ### Redis (for BullMQ queues)
 ```bash
 REDIS_URL=redis://localhost:6379
 ```
+
+### Object storage (original uploads — MinIO / S3)
+
+Persists original PDFs/images via `ObjectStorage` (`packages/core`). OCR still uses in-memory buffers in v1.
+
+```bash
+# minio | s3 | none (none = skip put; upload/OCR unchanged)
+STORAGE_PROVIDER=minio
+S3_ENDPOINT=http://localhost:9000   # http://minio:9000 inside Docker
+S3_REGION=us-east-1
+S3_ACCESS_KEY_ID=minioadmin
+S3_SECRET_ACCESS_KEY=minioadmin
+S3_BUCKET=the-eye-documents
+S3_FORCE_PATH_STYLE=true            # required for MinIO
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=minioadmin
+```
+
+- Console (dev): http://localhost:9001  
+- Download / preview API: `GET /documents/:id/file?disposition=inline|attachment` (streams original when `storage_key` is set). When `COREF_SERVICE_TOKEN` or `API_SERVICE_TOKEN` is set, the API requires `x-api-key`. The web BFF checks the user session and forwards the token — the web process must have the same token as the API.  
+- Swap to AWS: `STORAGE_PROVIDER=s3`, real credentials, optional `S3_FORCE_PATH_STYLE=false`
 
 ### OCR Confidence Thresholds (Optional)
 ```bash

@@ -1,25 +1,39 @@
-import { documentRepository } from '@workspace/shared'
+import { documentRepository, getMimeType } from '@workspace/shared'
 import { createHash } from 'crypto'
 import { validateDocumentUpload, DocumentType } from '@workspace/shared'
 import { getAzureOCRService, type OCRResult } from './ocr'
 import { getDocumentQueue, DocumentQueue, QueueProcessingOptions } from './services/queue'
 import type { Document } from '@workspace/shared'
 import { DocumentStatus, PipelineStage, logPipelineStage, pipelineLog } from './utils/pipeline-log'
+import {
+	buildDocumentStorageKey,
+	getObjectStorage,
+	isObjectStorageConfigured,
+	type ObjectStorage,
+} from './services/storage'
 
 export interface OCRServiceConfig {
 	useQueue?: boolean
+	/** Inject storage for tests; defaults to getObjectStorage() when configured. */
+	objectStorage?: ObjectStorage | null
 }
 
 export class OCRService {
 	private useQueue: boolean
 	private azureService = getAzureOCRService()
 	private queue?: DocumentQueue
+	private objectStorage: ObjectStorage | null
 
 	constructor(config: OCRServiceConfig = {}) {
 		this.useQueue = config.useQueue ?? false
 		if (this.useQueue) {
 			// Singleton — never spawn a new BullMQ Worker per upload
 			this.queue = getDocumentQueue()
+		}
+		if (config.objectStorage !== undefined) {
+			this.objectStorage = config.objectStorage
+		} else {
+			this.objectStorage = isObjectStorageConfigured() ? getObjectStorage() : null
 		}
 	}
 
@@ -47,6 +61,16 @@ export class OCRService {
 				status: existing.status,
 				fileHash,
 			})
+
+			// Backfill storage for legacy rows that never persisted the original
+			if (this.objectStorage && !existing.storageKey) {
+				await this.persistOriginal(existing.id, fileBuffer, {
+					filename: validatedMetadata.filename,
+					fileHash,
+					caseId: existing.caseId ?? caseId ?? null,
+				})
+			}
+
 			return { documentId: existing.id }
 		}
 
@@ -70,6 +94,26 @@ export class OCRService {
 			mode: this.useQueue ? 'queue' : 'sync',
 			status: this.useQueue ? DocumentStatus.QUEUED : DocumentStatus.PROCESSING,
 		})
+
+		if (this.objectStorage) {
+			try {
+				await this.persistOriginal(document.id, fileBuffer, {
+					filename: validatedMetadata.filename,
+					fileHash,
+					caseId: caseId ?? null,
+				})
+			} catch (error: any) {
+				const message = error instanceof Error ? error.message : String(error)
+				await logPipelineStage(document.id, PipelineStage.STORAGE_FAILED, {
+					error: message,
+				})
+				await documentRepository.updateById(document.id, {
+					status: DocumentStatus.FAILED,
+					errorMessage: `storage_failed: ${message}`,
+				})
+				throw error
+			}
+		}
 
 		const queueOptions: QueueProcessingOptions = {
 			documentType: validatedMetadata.documentType,
@@ -107,6 +151,38 @@ export class OCRService {
 			})
 			throw error
 		}
+	}
+
+	private async persistOriginal(
+		documentId: number,
+		fileBuffer: Buffer,
+		meta: { filename: string; fileHash: string; caseId: number | null },
+	): Promise<void> {
+		if (!this.objectStorage) return
+
+		const contentType = getMimeType(meta.filename)
+		const storageKey = buildDocumentStorageKey({
+			caseId: meta.caseId,
+			documentId,
+			fileHash: meta.fileHash,
+			filename: meta.filename,
+		})
+		const storageBucket = process.env.S3_BUCKET ?? 'the-eye-documents'
+
+		await this.objectStorage.putObject(storageKey, fileBuffer, contentType)
+		await documentRepository.updateById(documentId, {
+			storageKey,
+			storageBucket,
+			contentType,
+		})
+
+		await logPipelineStage(documentId, PipelineStage.STORAGE_PERSISTED, {
+			storageKey,
+			storageBucket,
+			contentType,
+			bytes: fileBuffer.length,
+			provider: process.env.STORAGE_PROVIDER ?? 'minio',
+		})
 	}
 
 	async getDocument(documentId: number): Promise<Document | null> {

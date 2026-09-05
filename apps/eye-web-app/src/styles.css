@@ -6,19 +6,26 @@
 @plugin '@tailwindcss/typography';
 
 @theme {
-	--font-size-meta-sm: 0.4375rem;
-	--font-size-meta: 0.5rem;
-	--font-size-body: 0.625rem;
-	--font-size-body-lg: 0.75rem;
+	--font-size-meta-sm: 0.625rem;
+	--font-size-meta: 0.6875rem;
+	--font-size-body: 0.8125rem;
+	--font-size-body-lg: 0.9375rem;
 }
 
 @custom-variant dark (&:is(.dark *));
 
 @layer base {
-	.text-meta-sm { font-size: 0.4375rem }
-	.text-meta { font-size: 0.5rem }
-	.text-body { font-size: 0.625rem }
-	.text-body-lg { font-size: 0.75rem }
+	.text-meta-sm { font-size: 0.625rem; line-height: 1.4 }
+	.text-meta { font-size: 0.6875rem; line-height: 1.45 }
+	.text-body { font-size: 0.8125rem; line-height: 1.65 }
+	.text-body-lg { font-size: 0.9375rem; line-height: 1.45 }
+}
+
+.reading {
+	max-width: 62ch;
+	line-height: 1.65;
+	letter-spacing: 0;
+	text-transform: none;
 }
 
 :root {
@@ -412,7 +419,7 @@ body {
 }
 
 .text-glow-teal {
-  text-shadow: 0 0 14px rgba(77, 246, 224, 0.45), 0 0 28px rgba(77, 246, 224, 0.15);
+  text-shadow: 0 0 8px rgba(77, 246, 224, 0.2);
 }
 
 .bracket-bottom-right-only {
@@ -608,8 +615,8 @@ body {
 /* ── EmptyState: resting frame ── */
 .empty-state-body {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  line-height: 1.6;
+  font-size: 0.8125rem;
+  line-height: 1.65;
   color: var(--on-surface-variant);
   font-weight: 500;
   max-width: 320px;

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "The Eye RAG golden set",
+  "description": "Store real filings off-git. This schema is the contract for Phase 6 CI.",
+  "type": "object",
+  "required": ["version", "queries"],
+  "properties": {
+    "version": { "type": "integer" },
+    "queries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "query", "kind", "gold"],
+        "properties": {
+          "id": { "type": "string" },
+          "query": { "type": "string" },
+          "kind": {
+            "type": "string",
+            "enum": ["statute", "party-name", "plain-language", "similar-case", "negative"]
+          },
+          "gold": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["chunkUid"],
+              "properties": {
+                "chunkUid": {
+                  "type": "string",
+                  "description": "sha256(document_id | section | text_hash | chunker_version)"
+                },
+                "documentId": { "type": "integer" },
+                "chunkIndex": { "type": "integer" },
+                "start": { "type": "integer" },
+                "end": { "type": "integer" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

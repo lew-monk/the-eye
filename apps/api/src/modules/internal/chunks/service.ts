@@ -1,6 +1,6 @@
 import { getDocumentQueue } from '@workspace/core'
 import { documentRepository, chunkRepository, participantRepository } from '@workspace/shared'
-import type { SimilarQuery, SimilarCaseResult } from '@workspace/shared'
+import type { SimilarQuery, SimilarCaseResult, SimilarCasesResponse } from '@workspace/shared'
 
 export abstract class ChunksService {
 	static async store(
@@ -14,47 +14,65 @@ export abstract class ChunksService {
 		const document = await documentRepository.findById(documentId)
 		if (!document) return null
 
-		const rows = chunks.map((c) => ({
-			...c,
-			documentId,
-			embeddingProvider,
-			embeddingModel,
-		}))
+		// Strip empty embedding arrays so rows stay "pending embed"
+		const rows = chunks.map((c) => {
+			const { embedding, ...rest } = c
+			const hasVector = Array.isArray(embedding) && embedding.length > 0
+			return {
+				...rest,
+				documentId,
+				embeddingProvider,
+				embeddingModel,
+				ocrConfidence: c.ocrConfidence ?? document.confidence ?? null,
+				...(hasVector ? { embedding } : {}),
+			}
+		})
 
 		await chunkRepository.deleteByDocumentId(documentId)
 		const inserted = await chunkRepository.createMany(rows)
 
-		const documentUpdates: Record<string, any> = {
-			embeddingVersion,
-			embeddingProvider,
-			embeddingModel,
-		}
+		// Persist text chunks first. Do not mark embeddings complete when provider is "none".
+		const embeddingsPending =
+			embeddingProvider === 'none' ||
+			embeddingVersion === 0 ||
+			rows.every((r) => !('embedding' in r) || !Array.isArray((r as any).embedding) || (r as any).embedding.length === 0)
+
+		const documentUpdates: Record<string, any> = {}
 		if (normalizedText !== undefined) {
 			documentUpdates.normalizedText = normalizedText
 		}
-		await documentRepository.updateById(documentId, documentUpdates as any)
+		if (!embeddingsPending) {
+			documentUpdates.embeddingVersion = embeddingVersion
+			documentUpdates.embeddingProvider = embeddingProvider
+			documentUpdates.embeddingModel = embeddingModel
+		}
+		if (Object.keys(documentUpdates).length > 0) {
+			await documentRepository.updateById(documentId, documentUpdates as any)
+		}
 
 		await documentRepository.addProcessingLog({
 			documentId,
-			action: 'chunks_embedded',
+			action: 'chunks_stored',
 			details: {
 				count: inserted.length,
 				version: embeddingVersion,
 				provider: embeddingProvider,
 				model: embeddingModel,
 				normalized: normalizedText !== undefined,
+				embeddingsPending,
 			},
 		})
 
+		// Always queue embedding job so retries can run without re-chunking
 		await getDocumentQueue().addDocumentChunkToQueue(documentId)
 
-		return { count: inserted.length }
+		return { count: inserted.length, embeddingsPending }
 	}
 
 	static async getSimilar(
 		targetDocumentId: number,
 		opts: SimilarQuery,
-	): Promise<{ caseId: number; similarCases: SimilarCaseResult[] } | null> {
+	): Promise<SimilarCasesResponse | null> {
 		const target = await documentRepository.findById(targetDocumentId)
 		if (!target) return null
 
@@ -70,13 +88,19 @@ export abstract class ChunksService {
 			{ weightedSum: number; totalWeight: number }
 		> = {}
 
-		const chunkQueries = targetChunks
-			.filter((c) => c.embedding)
-			.map(async (chunk) => {
+		const embeddingModel = target.embeddingModel ?? null
+		const queryChunks = targetChunks.filter((c) => Array.isArray(c.embedding) && c.embedding.length > 0)
+		const indexIncomplete = queryChunks.length === 0
+
+		const chunkQueries = queryChunks.map(async (chunk) => {
+				if (!embeddingModel) {
+					return { positionWeight: chunk.positionWeight ?? 1.0, similar: [] as Awaited<ReturnType<typeof chunkRepository.findSimilarChunks>> }
+				}
 				const similar = await chunkRepository.findSimilarChunks(
-					chunk.embedding!,
+					asNumberArray(chunk.embedding),
 					targetDocumentId,
 					limit * 2,
+					{ embeddingModel, nativeDimensions: chunk.embeddingDimensions ?? undefined },
 				)
 				return { positionWeight: chunk.positionWeight ?? 1.0, similar }
 			})
@@ -139,6 +163,14 @@ export abstract class ChunksService {
 		return {
 			caseId: targetDocumentId,
 			similarCases: similarCases.slice(0, limit),
+			indexIncomplete,
+			embeddingModel,
 		}
 	}
+}
+
+function asNumberArray(value: unknown): number[] {
+	if (Array.isArray(value)) return value.map(Number)
+	if (value instanceof Float32Array) return Array.from(value)
+	return []
 }

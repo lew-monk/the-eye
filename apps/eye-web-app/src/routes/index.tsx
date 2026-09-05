@@ -30,12 +30,12 @@ function StatCard({
 
 	return (
 		<div className="flex flex-col p-4 border-l-2 border-outline-variant/30 hover:border-primary/40 transition-colors duration-500">
-			<span className="font-mono text-body uppercase tracking-[0.12em] text-outline">
+			<span className="font-mono text-meta uppercase tracking-[0.12em] text-outline">
 				{label}
 			</span>
 			<div className="flex items-baseline gap-2 mt-1.5">
 				<span
-					className={`font-mono text-2xl font-bold tabular-nums ${glow ? "text-glow-teal text-primary" : "text-on-surface"}`}
+					className={`font-mono text-2xl font-bold tabular-nums ${glow ? "text-primary" : "text-on-surface"}`}
 				>
 					{value}
 				</span>
@@ -74,7 +74,7 @@ function EntityRow({
 				<Link
 					to="/entities/$entityName"
 					params={{ entityName: encodeURIComponent(entity.normalizedName) }}
-					className="font-mono text-xs text-on-surface-variant truncate hover:text-primary transition-colors"
+					className="font-mono text-body text-on-surface truncate hover:text-primary transition-colors"
 				>
 					{entity.name}
 				</Link>
@@ -232,10 +232,10 @@ function Dashboard() {
 						<div className="flex items-center justify-between">
 							<div className="flex items-center gap-2">
 								<StatusDot variant="default" size="sm" pulse />
-								<span className="font-mono text-body uppercase tracking-[0.15em] text-on-surface-variant">
+								<span className="font-mono text-meta uppercase tracking-[0.12em] text-outline">
 									INTELLIGENCE_FEED
 								</span>
-								<span className="font-mono text-body tabular-nums text-outline">
+								<span className="font-mono text-meta tabular-nums text-outline">
 									{casesData.length} CASES
 								</span>
 							</div>
@@ -271,10 +271,10 @@ function Dashboard() {
 											<div className="pl-5 pr-4 py-3">
 												<div className="flex items-start justify-between gap-3">
 													<div className="flex items-center gap-3 min-w-0">
-														<span className="font-mono text-body tabular-nums text-primary/30 shrink-0">
+														<span className="font-mono text-body-lg font-bold tabular-nums text-on-surface shrink-0">
 															{c.caseNumber}
 														</span>
-														<span className="font-mono text-xs text-on-surface leading-tight truncate">
+														<span className="font-mono text-body text-on-surface leading-tight truncate">
 															{c.title}
 														</span>
 													</div>
@@ -288,21 +288,21 @@ function Dashboard() {
 													</div>
 												</div>
 												<div className="flex items-center gap-3 mt-2">
-<span className="font-mono text-body text-outline">
+<span className="font-mono text-meta text-outline">
 													{c.caseType}
 												</span>
 													{c.parties && c.parties[0] && (
-														<span className="font-mono text-body uppercase tracking-wider text-primary/25">
+														<span className="font-mono text-meta text-outline">
 															{c.parties[0]}
 														</span>
 													)}
 													<div className="flex items-center gap-3 ml-auto">
 														{c.tags && c.tags.map((t: string) => (
-															<span key={t} className="font-mono text-body tabular-nums text-outline">
+															<span key={t} className="font-mono text-meta tabular-nums text-outline">
 																#{t}
 															</span>
 														))}
-														<span className="hidden sm:block font-mono text-body tabular-nums text-outline">
+														<span className="hidden sm:block font-mono text-meta tabular-nums text-outline">
 															{new Date(c.updatedAt || c.createdAt).toLocaleDateString()}
 														</span>
 													</div>
@@ -321,35 +321,34 @@ function Dashboard() {
 						<GlassPanel variant="default" brackets="both" padding="md">
 							<div className="flex items-center gap-2 mb-3">
 								<StatusDot variant="success" size="sm" pulse />
-								<span className="font-mono text-body uppercase tracking-[0.15em] text-on-surface-variant">
+								<span className="font-mono text-meta uppercase tracking-[0.12em] text-outline">
 									ENTITY_NETWORK
 								</span>
-								<span className="ml-auto font-mono text-body tabular-nums text-primary/30">
+								<span className="ml-auto font-mono text-meta tabular-nums text-outline">
 									{entities.length} LINKED
 								</span>
 							</div>
 
 							<div className="space-y-0">
-								{entities.map((e, i) => (
-									<EntityRow key={e.id} entity={e} index={i} />
-								))}
+								{entities.length === 0 ? (
+									<div className="py-4 text-center">
+										<span className="font-mono text-meta text-outline">
+											NO_CO_OCCURRENCES_YET
+										</span>
+									</div>
+								) : (
+									entities.map((e, i) => (
+										<EntityRow key={e.normalizedName || e.id} entity={e} index={i} />
+									))
+								)}
 							</div>
-
-							<Button
-								variant="ghost"
-								size="sm"
-								brackets={false}
-								className="w-full mt-3 h-7 text-body uppercase tracking-wider text-outline border-0 hover:text-primary"
-							>
-								EXPAND_NETWORK{" "}
-							</Button>
 						</GlassPanel>
 
 						{/* System Telemetry */}
 						<GlassPanel variant="default" brackets="bottom" padding="md">
 							<div className="flex items-center gap-2 mb-3">
 								<StatusDot variant="success" size="sm" />
-								<span className="font-mono text-body uppercase tracking-[0.15em] text-on-surface-variant">
+								<span className="font-mono text-meta uppercase tracking-[0.12em] text-outline">
 									SYSTEM_STATUS
 								</span>
 							</div>
@@ -360,7 +359,7 @@ function Dashboard() {
 						<GlassPanel variant="default" brackets="none" padding="md">
 							<div className="flex items-center gap-2 mb-2">
 								<StatusDot variant="default" size="sm" pulse />
-								<span className="font-mono text-body uppercase tracking-[0.15em] text-on-surface-variant">
+								<span className="font-mono text-meta uppercase tracking-[0.12em] text-outline">
 									LIVE_TELEMETRY
 								</span>
 							</div>

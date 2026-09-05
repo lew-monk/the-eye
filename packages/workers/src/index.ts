@@ -33,3 +33,8 @@ export function registerAllWorkers(): () => Promise<void> {
 }
 
 export { getFailedEmbeddingJobs, retryFailedEmbeddingJobs, requeueFailedEmbeddingJobs } from './queue'
+export {
+	createEmbeddingProvider,
+	resolveEmbeddingProviderName,
+	type EmbeddingProvider,
+} from './embedding'

@@ -10,6 +10,8 @@ export const ChunkModel = {
 			chunkTextHash: t.Optional(t.String()),
 			tokenCount: t.Optional(t.Number()),
 			positionWeight: t.Optional(t.Number()),
+			parentChunkIndex: t.Optional(t.Nullable(t.Number())),
+			ocrConfidence: t.Optional(t.Number()),
 		}),
 		),
 		normalizedText: t.Optional(t.String()),

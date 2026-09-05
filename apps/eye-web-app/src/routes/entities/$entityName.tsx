@@ -27,6 +27,29 @@ function roleLabel(role: string): string {
 	return ROLE_LABELS[role] ?? role.toUpperCase().replace(/_/g, "_");
 }
 
+function highlightMention(context: string, mentionText: string, mentionStart?: number) {
+	const hasLeadingEllipsis = context.startsWith("\u2026");
+	const clean = hasLeadingEllipsis ? context.slice(1) : context;
+	const fromText = mentionText
+		? clean.toLowerCase().indexOf(mentionText.toLowerCase())
+		: -1;
+	const offset = fromText >= 0 ? fromText : Math.min(150, mentionStart ?? 0);
+	const len = mentionText.length;
+	const prefix = hasLeadingEllipsis ? "\u2026" : "";
+	return (
+		<>
+			<span className="text-outline">
+				{prefix}
+				{clean.slice(0, offset)}
+			</span>
+			<mark className="text-on-surface bg-primary/15 px-0.5">
+				{clean.slice(offset, offset + len)}
+			</mark>
+			<span className="text-outline">{clean.slice(offset + len)}</span>
+		</>
+	);
+}
+
 function MentionContextDoc({
 	mc,
 }: {
@@ -42,7 +65,7 @@ function MentionContextDoc({
 					params={{
 						caseId: String(mc.caseId ?? ""),
 					}}
-					className="font-mono text-body text-primary/40 hover:text-primary transition-colors"
+					className="font-mono text-body-lg text-on-surface hover:text-primary transition-colors"
 				>
 					{mc.caseNumber ? `${mc.caseNumber} — ` : ""}{mc.filename}
 				</Link>
@@ -54,7 +77,7 @@ function MentionContextDoc({
 				{mc.mentions.slice(0, 3).map((m, i) => (
 					<div key={i} className="border border-primary/15 bg-primary/[0.03]">
 						<div className="flex items-center justify-between px-3 py-1.5 border-b border-primary/10 bg-primary/[0.04]">
-							<span className="font-mono text-meta uppercase tracking-[0.12em] text-primary/40">
+							<span className="font-mono text-meta uppercase tracking-[0.12em] text-outline">
 								MENTION_{i + 1}
 							</span>
 							<div className="flex items-center gap-3">
@@ -71,7 +94,7 @@ function MentionContextDoc({
 								<span className="font-mono text-meta-sm uppercase tracking-[0.12em] text-outline block mb-0.5">
 									MENTION_TEXT
 								</span>
-								<code className="font-mono text-body-lg text-primary/80 bg-primary/[0.06] px-2 py-0.5 inline-block">
+								<code className="font-mono text-body-lg text-on-surface bg-primary/15 px-2 py-0.5 inline-block">
 									{m.text}
 								</code>
 							</div>
@@ -79,8 +102,8 @@ function MentionContextDoc({
 								<span className="font-mono text-meta-sm uppercase tracking-[0.12em] text-outline block mb-0.5">
 									SURROUNDING_CONTEXT
 								</span>
-								<p className="font-mono text-body text-on-surface-variant leading-relaxed">
-									{m.context}
+								<p className="font-mono text-body reading">
+									{highlightMention(m.context, m.text, m.start)}
 								</p>
 							</div>
 						</div>
@@ -105,7 +128,7 @@ function MentionContextDoc({
 						<Link
 							to="/cases/$caseId"
 							params={{ caseId: String(mc.caseId) }}
-							className="font-mono text-meta-sm text-primary/50 hover:text-primary transition-colors"
+							className="font-mono text-meta text-primary/70 hover:text-primary transition-colors"
 						>
 							{mc.caseNumber}
 						</Link>
@@ -123,7 +146,7 @@ function MentionContextDoc({
 					{mc.mentions.map((m, i) => (
 						<div key={i} className="p-4">
 							<div className="flex items-center justify-between mb-2">
-								<span className="font-mono text-meta uppercase tracking-[0.12em] text-primary/40">
+								<span className="font-mono text-meta uppercase tracking-[0.12em] text-outline">
 									MENTION_{i + 1}
 								</span>
 								<div className="flex items-center gap-3">
@@ -140,7 +163,7 @@ function MentionContextDoc({
 									<span className="font-mono text-meta-sm uppercase tracking-[0.12em] text-outline block mb-0.5">
 										MENTION_TEXT
 									</span>
-									<code className="font-mono text-body-lg text-primary/80 bg-primary/[0.06] px-2 py-0.5 inline-block">
+									<code className="font-mono text-body-lg text-on-surface bg-primary/15 px-2 py-0.5 inline-block">
 										{m.text}
 									</code>
 								</div>
@@ -148,8 +171,8 @@ function MentionContextDoc({
 									<span className="font-mono text-meta-sm uppercase tracking-[0.12em] text-outline block mb-0.5">
 										SURROUNDING_CONTEXT
 									</span>
-									<p className="font-mono text-body text-on-surface-variant leading-relaxed">
-										{m.context}
+									<p className="font-mono text-body reading">
+										{highlightMention(m.context, m.text, m.start)}
 									</p>
 								</div>
 							</div>
@@ -201,12 +224,12 @@ function EntityDetail() {
 							<div className="flex items-start justify-between gap-4">
 								<div className="min-w-0">
 									<div className="flex items-center gap-3 mb-2">
-										<span className="font-mono text-body tabular-nums text-primary/40">
+										<span className="font-mono text-meta uppercase tracking-[0.12em] text-outline">
 											ENTITY_DOSSIER
 										</span>
 										<StatusDot variant="success" size="sm" pulse />
 									</div>
-									<h1 className="font-mono text-sm text-on-surface mb-1">
+									<h1 className="font-mono text-lg font-medium text-on-surface mb-1">
 										{dossier.displayName}
 									</h1>
 									{dossier.mentionContexts.length > 0 && (
@@ -218,7 +241,7 @@ function EntityDetail() {
 											).map((m, i) => (
 												<code
 													key={i}
-													className="font-mono text-meta-sm text-primary/60 bg-primary/[0.06] px-1.5 py-0.5"
+													className="font-mono text-meta-sm text-on-surface bg-primary/[0.08] px-1.5 py-0.5"
 												>
 													{m}
 												</code>
@@ -238,7 +261,7 @@ function EntityDetail() {
 													key={a.caseId}
 													to="/cases/$caseId"
 													params={{ caseId: String(a.caseId) }}
-													className="font-mono text-meta-sm text-primary/50 hover:text-primary transition-colors bg-primary/[0.06] px-1.5 py-0.5"
+													className="font-mono text-meta-sm text-on-surface hover:text-primary transition-colors bg-primary/[0.08] px-1.5 py-0.5"
 												>
 													{a.caseNumber}
 												</Link>
@@ -267,7 +290,7 @@ function EntityDetail() {
 										density="standard"
 										className="w-[120px]"
 									/>
-									<span className="font-mono text-body tabular-nums text-primary/60">
+									<span className="font-mono text-body tabular-nums text-on-surface">
 										{dossier.confidence.overallScore}%
 									</span>
 								</div>
@@ -279,7 +302,7 @@ function EntityDetail() {
 								<GlassPanel variant="default" brackets="both" padding="md">
 									<div className="flex items-center gap-2 mb-3">
 										<StatusDot variant="default" size="sm" pulse />
-										<span className="font-mono text-body uppercase tracking-[0.15em] text-on-surface-variant">
+										<span className="font-mono text-meta uppercase tracking-[0.12em] text-outline">
 											CONFIDENCE_ANALYSIS
 										</span>
 									</div>
@@ -294,7 +317,7 @@ function EntityDetail() {
 												density="compact"
 												className="mb-1"
 											/>
-											<span className="font-mono text-body tabular-nums text-primary/60">
+											<span className="font-mono text-body tabular-nums text-on-surface">
 												{dossier.confidence.roleConsistency}%
 											</span>
 										</div>
@@ -307,7 +330,7 @@ function EntityDetail() {
 												density="compact"
 												className="mb-1"
 											/>
-											<span className="font-mono text-body tabular-nums text-primary/60">
+											<span className="font-mono text-body tabular-nums text-on-surface">
 												{dossier.confidence.documentCoverage}%
 											</span>
 										</div>
@@ -320,7 +343,7 @@ function EntityDetail() {
 												density="compact"
 												className="mb-1"
 											/>
-											<span className="font-mono text-body tabular-nums text-primary/60">
+											<span className="font-mono text-body tabular-nums text-on-surface">
 												{dossier.confidence.overallScore}%
 											</span>
 										</div>
@@ -357,7 +380,7 @@ function EntityDetail() {
 														className="flex items-center gap-2 px-3 py-2 border border-warning/20 bg-warning/5"
 													>
 														<StatusDot variant="warning" size="sm" />
-														<span className="font-mono text-meta text-outline leading-relaxed">
+														<span className="font-mono text-body text-on-surface reading">
 															{flag}
 														</span>
 													</div>
@@ -371,7 +394,7 @@ function EntityDetail() {
 									<div className="px-5 py-3 border-b border-outline-variant/10">
 										<div className="flex items-center gap-2">
 											<StatusDot variant="default" size="sm" pulse />
-											<span className="font-mono text-body uppercase tracking-[0.15em] text-on-surface-variant">
+											<span className="font-mono text-meta uppercase tracking-[0.12em] text-outline">
 												APPEARANCES
 											</span>
 											<span className="font-mono text-body text-outline">
@@ -388,7 +411,7 @@ function EntityDetail() {
 												<div className="flex items-start justify-between gap-4">
 													<div className="min-w-0 flex-1">
 														<div className="flex items-center gap-2 mb-0.5">
-															<span className="font-mono text-body text-on-surface-variant truncate">
+															<span className="font-mono text-body-lg text-on-surface truncate">
 																{a.filename}
 															</span>
 															<span className="font-mono text-meta text-outline shrink-0 uppercase">
@@ -403,7 +426,7 @@ function EntityDetail() {
 																	<Link
 																		to="/cases/$caseId"
 																		params={{ caseId: String(a.caseId) }}
-																		className="text-primary/50 hover:text-primary transition-colors"
+																		className="text-primary/70 hover:text-primary transition-colors"
 																	>
 																		{a.caseNumber}
 																	</Link>
@@ -431,7 +454,7 @@ function EntityDetail() {
 										<div className="px-5 py-3 border-b border-outline-variant/10">
 											<div className="flex items-center gap-2">
 												<StatusDot variant="default" size="sm" pulse />
-												<span className="font-mono text-body uppercase tracking-[0.15em] text-on-surface-variant">
+												<span className="font-mono text-meta uppercase tracking-[0.12em] text-outline">
 													MENTION_CONTEXTS
 												</span>
 												<span className="font-mono text-body text-outline">
@@ -452,7 +475,7 @@ function EntityDetail() {
 								<GlassPanel variant="default" brackets="both" padding="md">
 									<div className="flex items-center gap-2 mb-3">
 										<StatusDot variant="default" size="sm" pulse />
-										<span className="font-mono text-body uppercase tracking-[0.15em] text-on-surface-variant">
+										<span className="font-mono text-meta uppercase tracking-[0.12em] text-outline">
 											ROLE_BREAKDOWN
 										</span>
 									</div>
@@ -465,7 +488,7 @@ function EntityDetail() {
 													key={rd.role}
 													className="flex items-center justify-between px-3 py-1.5 border border-outline-variant/10"
 												>
-													<span className="font-mono text-body text-on-surface-variant">
+													<span className="font-mono text-body text-on-surface">
 														{roleLabel(rd.role)}
 													</span>
 													<div className="flex items-center gap-2">
@@ -489,7 +512,7 @@ function EntityDetail() {
 										<div className="px-5 py-3 border-b border-outline-variant/10">
 											<div className="flex items-center gap-2">
 												<StatusDot variant="default" size="sm" pulse />
-												<span className="font-mono text-body uppercase tracking-[0.15em] text-on-surface-variant">
+												<span className="font-mono text-meta uppercase tracking-[0.12em] text-outline">
 													CO_OCCURRING
 												</span>
 												<span className="font-mono text-body text-outline">
@@ -509,7 +532,7 @@ function EntityDetail() {
 												>
 													<div className="flex items-center justify-between">
 														<div className="min-w-0">
-															<span className="font-mono text-body text-on-surface-variant block truncate">
+															<span className="font-mono text-body-lg text-on-surface block truncate">
 																{co.displayName}
 															</span>
 															<div className="flex items-center gap-1.5 mt-0.5">
@@ -534,7 +557,7 @@ function EntityDetail() {
 									<GlassPanel variant="default" brackets="both" padding="md">
 										<div className="flex items-center gap-2 mb-3">
 											<StatusDot variant="default" size="sm" pulse />
-											<span className="font-mono text-body uppercase tracking-[0.15em] text-on-surface-variant">
+											<span className="font-mono text-meta uppercase tracking-[0.12em] text-outline">
 												CASES
 											</span>
 											<span className="font-mono text-body text-outline">
@@ -555,7 +578,7 @@ function EntityDetail() {
 													params={{ caseId: String(a.caseId) }}
 													className="flex items-center gap-2 px-2 py-1 hover:bg-surface/50 transition-colors block"
 												>
-													<span className="font-mono text-body tabular-nums text-primary/40">
+													<span className="font-mono text-body-lg tabular-nums text-on-surface">
 														{a.caseNumber}
 													</span>
 <span className="font-mono text-meta text-outline truncate">

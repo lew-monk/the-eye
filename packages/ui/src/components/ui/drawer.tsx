@@ -12,6 +12,7 @@ const drawerVariants = cva(
 				sm: "w-[400px]",
 				md: "w-[560px]",
 				lg: "w-[720px]",
+				xl: "w-[min(52vw,960px)]",
 				full: "w-[90vw]",
 			},
 		},
@@ -111,6 +112,7 @@ export interface DrawerProps
 	onOpenChange: (open: boolean) => void
 	title: string
 	children: React.ReactNode
+	bodyClassName?: string
 }
 
 function Drawer({
@@ -119,6 +121,7 @@ function Drawer({
 	title,
 	children,
 	size,
+	bodyClassName,
 }: DrawerProps) {
 	const panelRef = React.useRef<HTMLDivElement>(null)
 	const [animating, setAnimating] = React.useState(false)
@@ -233,7 +236,7 @@ function Drawer({
 						background-clip: padding-box;
 					}
 				`}</style>
-				<div className="flex-1 overflow-y-auto" data-drawer-scroll>
+				<div className={cn("flex-1 overflow-y-auto", bodyClassName)} data-drawer-scroll>
 					{children}
 				</div>
 			</div>

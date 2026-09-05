@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "note": "Synthetic example — replace with redacted real queries in a private bucket. Do not commit PII.",
+  "queries": [
+    {
+      "id": "statute-cap22",
+      "query": "What does Cap 22 section 3 say about limitation?",
+      "kind": "statute",
+      "gold": [{ "chunkUid": "example-uid-statute", "documentId": 101, "chunkIndex": 2 }]
+    },
+    {
+      "id": "party-otieno",
+      "query": "Which filings mention Justice Otieno?",
+      "kind": "party-name",
+      "gold": [{ "chunkUid": "example-uid-party", "documentId": 101, "chunkIndex": 0 }]
+    },
+    {
+      "id": "negative-eviction-unrelated",
+      "query": "Can the landlord evict without notice under this tenancy?",
+      "kind": "negative",
+      "gold": []
+    }
+  ]
+}

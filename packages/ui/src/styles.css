@@ -33,10 +33,10 @@
 	--color-surface-container-high: #262a34;
 	--color-surface-container-highest: #31353f;
 	--radius: 0.5rem;
-	--font-size-meta-sm: 0.4375rem; /* 7px — labels, annotations */
-	--font-size-meta: 0.5rem;      /* 8px — metadata, secondary */
-	--font-size-body: 0.625rem;    /* 10px — body text, buttons */
-	--font-size-body-lg: 0.75rem;  /* 12px — headings, emphasis */
+	--font-size-meta-sm: 0.625rem; /* 10px — chips, annotations */
+	--font-size-meta: 0.6875rem;   /* 11px — HUD labels, filenames */
+	--font-size-body: 0.8125rem;   /* 13px — readable body */
+	--font-size-body-lg: 0.9375rem; /* 15px — titles, names */
 }
 
 @layer base {

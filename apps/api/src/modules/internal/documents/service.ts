@@ -19,7 +19,7 @@ export abstract class DocumentsService {
 			embeddingVersion: null,
 			embeddingProvider: null,
 			embeddingModel: null,
-			extractionVersion: 1,
+			extractionVersion: null,
 		})
 
 		await documentRepository.addProcessingLog({

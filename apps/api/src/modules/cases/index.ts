@@ -3,10 +3,8 @@ import { eq } from 'drizzle-orm'
 import {
 	caseRepository,
 	documentRepository,
-	participantRepository,
 	caseRelationRepository,
 	cases,
-	type ParticipantWithCase,
 } from '@workspace/shared'
 import crypto from 'crypto'
 import { CasesService } from './service'
@@ -124,7 +122,6 @@ export const casesRouter = new Elysia({ prefix: '/cases' })
 					set.status = 400
 					return { error: 'Invalid case id or entity name' }
 				}
-				console.log('getEntityMentionContexts', params, query)
 				const contexts = await CasesService.getEntityMentionContexts(
 					normalizedName,
 					caseId,
@@ -144,6 +141,40 @@ export const casesRouter = new Elysia({ prefix: '/cases' })
 			}),
 		},
 	)
+	.post(
+		'/:id/participants',
+		async ({ params, body, set }) => {
+			try {
+				const caseId = Number(params.id)
+				if (Number.isNaN(caseId)) {
+					set.status = 400
+					return { error: 'Invalid case id' }
+				}
+				const participant = await CasesService.addManualParticipant(caseId, {
+					name: body.name,
+					role: body.role,
+					documentId: body.documentId,
+				})
+				return { data: participant }
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error)
+				if (message === 'Case has no documents' || message === 'Document is not in this case') {
+					set.status = 400
+					return { error: message }
+				}
+				console.error('Add participant error:', error)
+				set.status = 500
+				return { error: message }
+			}
+		},
+		{
+			body: t.Object({
+				name: t.String({ minLength: 1 }),
+				role: t.Optional(t.String()),
+				documentId: t.Optional(t.Numeric()),
+			}),
+		},
+	)
 	.get(
 		'/:id/entities',
 		async ({ params, set }) => {
@@ -153,44 +184,177 @@ export const casesRouter = new Elysia({ prefix: '/cases' })
 					set.status = 400
 					return { error: 'Invalid case id' }
 				}
-
-				const docs = await documentRepository.findByCaseId(caseId)
-				const totalDocsInCase = docs.length
-				const result: Array<{
-					id: number
-					name: string
-					normalizedName: string
-					role: string
-					roleConfidence: number | null
-					mentionCount: number
-					relevanceScore: number | null
-					mentions: string[] | null
-					documentCount: number
-					totalDocsInCase?: number
-				}> = []
-
-				for (const doc of docs) {
-					const parts = await participantRepository.findByDocumentId(doc.id)
-					for (const p of parts) {
-						result.push({
-							id: p.id,
-							name: p.name,
-							normalizedName: p.normalizedName,
-							role: p.role,
-							roleConfidence: p.roleConfidence,
-							mentionCount: p.mentionCount ?? 0,
-							relevanceScore: p.relevanceScore,
-							mentions: p.mentions,
-							documentCount: 1,
-							totalDocsInCase,
-						})
-					}
-				}
-
-				result.sort((a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0))
+				const result = await CasesService.getCaseEntities(caseId)
 				return { data: result }
 			} catch (error) {
 				console.error('Case entities error:', error)
+				return { error: String(error) }
+			}
+		},
+	)
+	.get(
+		'/:id/chronology',
+		async ({ params, query, set }) => {
+			try {
+				const caseId = Number(params.id)
+				if (Number.isNaN(caseId)) {
+					set.status = 400
+					return { error: 'Invalid case id' }
+				}
+				const page = await CasesService.getDocumentChronology(caseId, {
+					maxDates: query.limit,
+				})
+				return {
+					data: page.events,
+					totalDates: page.totalDates,
+					totalEvents: page.totalEvents,
+				}
+			} catch (error) {
+				console.error('Case chronology error:', error)
+				return { error: String(error) }
+			}
+		},
+		{
+			query: t.Object({
+				limit: t.Optional(t.Numeric({ minimum: 1, maximum: 200 })),
+			}),
+		},
+	)
+	.get(
+		'/:id/reference-links',
+		async ({ params, set }) => {
+			try {
+				const caseId = Number(params.id)
+				if (Number.isNaN(caseId)) {
+					set.status = 400
+					return { error: 'Invalid case id' }
+				}
+				const links = await CasesService.getReferenceLinks(caseId)
+				return { data: links }
+			} catch (error) {
+				console.error('Case reference links error:', error)
+				return { error: String(error) }
+			}
+		},
+	)
+	.get(
+		'/:id/network',
+		async ({ params, set }) => {
+			try {
+				const caseId = Number(params.id)
+				if (Number.isNaN(caseId)) {
+					set.status = 400
+					return { error: 'Invalid case id' }
+				}
+				const found = await caseRepository.findById(caseId)
+				if (!found) {
+					set.status = 404
+					return { error: 'Case not found' }
+				}
+				const network = await CasesService.getCaseNetwork(caseId)
+				const caseNumber = found.caseNumber || network.caseNumber
+				return {
+					data: {
+						...network,
+						title: found.title,
+						caseType: found.caseType,
+						status: found.status,
+						caseNumber,
+						nodes: network.nodes.map((n) =>
+							n.id === `case:${caseId}`
+								? { ...n, label: caseNumber, sublabel: found.title }
+								: n,
+						),
+					},
+				}
+			} catch (error) {
+				console.error('Case network error:', error)
+				return { error: String(error) }
+			}
+		},
+	)
+	.get(
+		'/:id/graph',
+		async ({ params, set }) => {
+			try {
+				const caseId = Number(params.id)
+				if (Number.isNaN(caseId)) {
+					set.status = 400
+					return { error: 'Invalid case id' }
+				}
+				const graph = await CasesService.getDocumentGraph(caseId)
+				return { data: graph }
+			} catch (error) {
+				console.error('Case graph error:', error)
+				return { error: String(error) }
+			}
+		},
+	)
+	.get(
+		'/:id/intelligence',
+		async ({ params, set }) => {
+			try {
+				const caseId = Number(params.id)
+				if (Number.isNaN(caseId)) {
+					set.status = 400
+					return { error: 'Invalid case id' }
+				}
+				const found = await caseRepository.findById(caseId)
+				if (!found) {
+					set.status = 404
+					return { error: 'Case not found' }
+				}
+				const graph = await CasesService.getIntelligenceGraph(caseId)
+				return {
+					data: {
+						...graph,
+						title: found.title,
+						caseType: found.caseType,
+						status: found.status,
+						caseNumber: found.caseNumber || graph.caseNumber,
+						nodes: graph.nodes.map((n) =>
+							n.id === `case:${caseId}`
+								? { ...n, label: found.caseNumber, sublabel: found.title }
+								: n,
+						),
+					},
+				}
+			} catch (error) {
+				console.error('Case intelligence error:', error)
+				return { error: String(error) }
+			}
+		},
+	)
+	.get(
+		'/:id/role-flags',
+		async ({ params, set }) => {
+			try {
+				const caseId = Number(params.id)
+				if (Number.isNaN(caseId)) {
+					set.status = 400
+					return { error: 'Invalid case id' }
+				}
+				const flags = await CasesService.getRoleVarianceFlags(caseId)
+				return { data: flags }
+			} catch (error) {
+				console.error('Case role flags error:', error)
+				return { error: String(error) }
+			}
+		},
+	)
+	.get(
+		'/:id/trajectories',
+		async ({ params, set }) => {
+			try {
+				const caseId = Number(params.id)
+				if (Number.isNaN(caseId)) {
+					set.status = 400
+					return { error: 'Invalid case id' }
+				}
+				const trajectories = await CasesService.getEntityTrajectories(caseId)
+				return { data: trajectories }
+			} catch (error) {
+				console.error('Case trajectories error:', error)
 				return { error: String(error) }
 			}
 		},

@@ -605,3 +605,20 @@ roles:
       - "(Dispute\\s+Board\\s+Member|DRB\\s+Member|Dispute\\s+Adjudicator)"
     weight: 0.25
     ner_hint: PERSON
+  # ============================================================================
+  # DATE
+  # ============================================================================
+  - role: date
+    jurisdictions: [all]
+    patterns:
+      # Full dates
+      - "\\b\\d{1,2}(?:st|nd|rd|th)?\\s+(?:of\\s+)?(?:January|February|March|April|May|June|July|August|September|October|November|December)\\s+\\d{4}\\b"
+      - "\\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\\s+\\d{1,2}(?:st|nd|rd|th)?,?\\s+\\d{4}\\b"
+      - "\\b\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4}\\b"
+      # Day + Month + Year variations common in judgments
+      - "\\b\\d{1,2}\\s+(?:day\\s+of\\s+)?(?:January|February|March|April|May|June|July|August|September|October|November|December)\\s+\\d{4}\\b"
+      - "\\b(?:on\\s+the\\s+)?\\d{1,2}(?:st|nd|rd|th)?\\s+day\\s+of\\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\\s+\\d{4}\\b"
+      # Year only (when clearly a date)
+      - "\\b(?:19|20)\\d{2}\\b"
+    weight: 0.45
+    ner_hint: DATE

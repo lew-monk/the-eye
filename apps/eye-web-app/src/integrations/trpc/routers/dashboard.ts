@@ -1,18 +1,6 @@
 import { apiClient } from "#/lib/api-client";
 import { createTRPCRouter, publicProcedure } from "../init";
 
-interface ParticipantResult {
-	data: Array<{
-		id: number;
-		name: string;
-		normalizedName: string;
-		role: string;
-		mentionCount: number;
-		caseNumber: string | null;
-	}>;
-	total: number;
-}
-
 interface DocumentStats {
 	total: number;
 	pending: number;
@@ -21,19 +9,41 @@ interface DocumentStats {
 	failed: number;
 }
 
+interface CoOccurrenceNetwork {
+	nodes: Array<{
+		normalizedName: string;
+		displayName: string;
+		role: string;
+		connections: number;
+	}>;
+	edges: Array<{
+		source: string;
+		target: string;
+		weight: number;
+	}>;
+}
+
 export const dashboardRouter = createTRPCRouter({
 	entities: publicProcedure.query(async () => {
-		const result = await apiClient.get<ParticipantResult>(
-			"/participants?limit=6",
+		const result = await apiClient.get<{ data: CoOccurrenceNetwork }>(
+			"/entities/network?limit=12",
 		);
-		return result.data.map((p) => ({
-			id: p.id,
-			name: p.name,
-			normalizedName: p.normalizedName,
-			role: p.role || "unknown",
-			connections: p.mentionCount || 0,
-			caseNumber: p.caseNumber,
+		const nodes = result?.data?.nodes ?? [];
+		return nodes.slice(0, 6).map((n, i) => ({
+			id: i + 1,
+			name: n.displayName,
+			normalizedName: n.normalizedName,
+			role: n.role || "unknown",
+			connections: n.connections || 0,
+			caseNumber: null as string | null,
 		}));
+	}),
+
+	entityNetwork: publicProcedure.query(async () => {
+		const result = await apiClient.get<{ data: CoOccurrenceNetwork }>(
+			"/entities/network?limit=30",
+		);
+		return result?.data ?? { nodes: [], edges: [] };
 	}),
 
 	stats: publicProcedure.query(async () => {

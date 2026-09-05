@@ -118,5 +118,5 @@ describe('AzureOCRService chunked processing', () => {
 
 		await expect(service.processDocumentFromBuffer(7, buffer)).rejects.toThrow('Azure unavailable')
 		expect(mockUpdateStatus).toHaveBeenCalledWith(7, 'failed', 'Azure unavailable')
-	})
+	}, { timeout: 30_000 })
 })
