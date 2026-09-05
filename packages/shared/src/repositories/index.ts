@@ -2,6 +2,8 @@
 export * from './base'
 
 // Specific repositories
+export * from './case'
+export * from './case-relation'
 export * from './document'
 export * from './participant'
 export * from './chunk'

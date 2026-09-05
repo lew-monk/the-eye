@@ -18,7 +18,8 @@ export class ApiKeyUsageRepository extends BaseRepository<ApiKeyUsage> {
 			bytesProcessed,
 			creditsUsed,
 			ipAddress: '127.0.0.1',
-			timestamp: new Date(),
+			createdAt: new Date(),
+			updatedAt: new Date(),
 		})
 		return result
 	}

@@ -77,7 +77,7 @@ function SignupForm() {
   })
 
   return (
-    <Form form={form} className="space-y-5">
+    <Form form={form} className="space-y-5" onSubmit={(e) => { e.preventDefault(); form.handleSubmit(); }}>
       <FormField
         name="name"
         validators={{
@@ -86,19 +86,22 @@ function SignupForm() {
       >
         <FormLabel className="text-left">OPERATIVE_NAME</FormLabel>
         <FormControl>
-          {(field) => (
-            <InputField
-              type="text"
-              placeholder="Jane Doe"
-              value={field.state.value as string}
-              onChange={(e) => field.handleChange(e.target.value)}
-              onBlur={field.handleBlur}
-              error={getErrorMessage(field.state.meta.errors[0]) ?? undefined}
-              icon={
-                <span className="material-symbols-outlined text-sm">badge</span>
-              }
-            />
-          )}
+          {(field) => {
+            const err = getErrorMessage(field.state.meta.errors[0]);
+            return (
+              <InputField
+                type="text"
+                placeholder="Jane Doe"
+                value={field.state.value as string}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+                {...(err ? { error: err } : {})}
+                icon={
+                  <span className="material-symbols-outlined text-sm">badge</span>
+                }
+              />
+            );
+          }}
         </FormControl>
       </FormField>
 
@@ -110,19 +113,22 @@ function SignupForm() {
       >
         <FormLabel className="text-left">EMAIL</FormLabel>
         <FormControl>
-          {(field) => (
-            <InputField
-              type="email"
-              placeholder="operative@the-eye.io"
-              value={field.state.value as string}
-              onChange={(e) => field.handleChange(e.target.value)}
-              onBlur={field.handleBlur}
-              error={getErrorMessage(field.state.meta.errors[0]) ?? undefined}
-              icon={
-                <span className="material-symbols-outlined text-sm">mail</span>
-              }
-            />
-          )}
+          {(field) => {
+            const err = getErrorMessage(field.state.meta.errors[0]);
+            return (
+              <InputField
+                type="email"
+                placeholder="operative@the-eye.io"
+                value={field.state.value as string}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+                {...(err ? { error: err } : {})}
+                icon={
+                  <span className="material-symbols-outlined text-sm">mail</span>
+                }
+              />
+            );
+          }}
         </FormControl>
       </FormField>
 
@@ -134,19 +140,22 @@ function SignupForm() {
       >
         <FormLabel className="text-left">PASSWORD</FormLabel>
         <FormControl>
-          {(field) => (
-            <InputField
-              type="password"
-              placeholder="••••••••••••"
-              value={field.state.value as string}
-              onChange={(e) => field.handleChange(e.target.value)}
-              onBlur={field.handleBlur}
-              error={getErrorMessage(field.state.meta.errors[0]) ?? undefined}
-              icon={
-                <span className="material-symbols-outlined text-sm">lock</span>
-              }
-            />
-          )}
+          {(field) => {
+            const err = getErrorMessage(field.state.meta.errors[0]);
+            return (
+              <InputField
+                type="password"
+                placeholder="••••••••••••"
+                value={field.state.value as string}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+                {...(err ? { error: err } : {})}
+                icon={
+                  <span className="material-symbols-outlined text-sm">lock</span>
+                }
+              />
+            );
+          }}
         </FormControl>
       </FormField>
 
@@ -158,21 +167,24 @@ function SignupForm() {
       >
         <FormLabel className="text-left">CONFIRM_PASSWORD</FormLabel>
         <FormControl>
-          {(field) => (
-            <InputField
-              type="password"
-              placeholder="••••••••••••"
-              value={field.state.value as string}
-              onChange={(e) => field.handleChange(e.target.value)}
-              onBlur={field.handleBlur}
-              error={getErrorMessage(field.state.meta.errors[0]) ?? undefined}
-              icon={
-                <span className="material-symbols-outlined text-sm">
-                  lock_reset
-                </span>
-              }
-            />
-          )}
+          {(field) => {
+            const err = getErrorMessage(field.state.meta.errors[0]);
+            return (
+              <InputField
+                type="password"
+                placeholder="••••••••••••"
+                value={field.state.value as string}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+                {...(err ? { error: err } : {})}
+                icon={
+                  <span className="material-symbols-outlined text-sm">
+                    lock_reset
+                  </span>
+                }
+              />
+            );
+          }}
         </FormControl>
       </FormField>
 
@@ -214,7 +226,7 @@ function SignupRoute() {
         CREDENTIALS
       </h1>
 
-      <p className="font-mono text-sm text-muted-foreground leading-relaxed max-w-sm">
+      <p className="font-mono text-sm text-outline leading-relaxed max-w-sm">
         Create credentials to access the case intelligence platform. All
         accounts are encrypted end-to-end.
       </p>
@@ -226,7 +238,7 @@ function SignupRoute() {
       <div className="text-center">
         <Link
           to="/auth/login"
-          className="font-mono text-xs uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors duration-500"
+          className="font-mono text-xs uppercase tracking-wider text-outline hover:text-primary transition-colors duration-500"
         >
           ALREADY_HAVE_ACCESS
         </Link>

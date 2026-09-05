@@ -1,8 +1,9 @@
-import { eq, sql, and, ilike } from 'drizzle-orm'
+import { eq, sql, and, ilike, inArray } from 'drizzle-orm'
 import { BaseRepository } from './base'
 import { participants, documents, type Participant, type NewParticipant } from '../schemas'
 
 export interface ParticipantWithCase extends Participant {
+	caseId: number | null
 	caseNumber: string | null
 	documentType: string
 }
@@ -62,8 +63,9 @@ export class ParticipantRepository extends BaseRepository<Participant, NewPartic
 				mentionCount: participants.mentionCount,
 				mentions: participants.mentions,
 				clusterId: participants.clusterId,
-				relevanceScore: participants.relevanceScore,
+				relevanceScore: participants			.relevanceScore,
 				extractionVersion: participants.extractionVersion,
+				caseId: documents.caseId,
 				caseNumber: documents.caseNumber,
 				documentType: documents.documentType,
 			})
@@ -81,6 +83,126 @@ export class ParticipantRepository extends BaseRepository<Participant, NewPartic
 		await this.db
 			.delete(participants)
 			.where(eq(participants.documentId, documentId))
+	}
+
+	async findCaseEntityOverlap(
+		documentId: number,
+		caseId: number,
+	): Promise<{
+		participantId: number
+		normalizedName: string
+		docCount: number
+		totalDocsInCase: number
+		mentionCountAcrossCase: number
+	}[]> {
+		const result = await this.db.execute(
+			sql`
+				WITH case_docs AS (
+					SELECT id FROM documents WHERE case_id = ${caseId}
+				),
+				case_doc_count AS (
+					SELECT COUNT(*)::int AS total FROM case_docs
+				),
+				target_entities AS (
+					SELECT id as participant_id, normalized_name, COALESCE(mention_count, 0) as m_count
+					FROM participants
+					WHERE document_id = ${documentId}
+				),
+				overlap AS (
+					SELECT
+						te.participant_id,
+						te.normalized_name,
+						te.m_count,
+						COUNT(DISTINCT p.document_id) + 1 AS doc_count,
+						SUM(COALESCE(p.mention_count, 0)) + te.m_count AS mention_count_total,
+						(SELECT total FROM case_doc_count) AS total_docs
+					FROM target_entities te
+					JOIN participants p
+						ON te.normalized_name = p.normalized_name
+						AND p.document_id IN (SELECT id FROM case_docs)
+						AND p.document_id != ${documentId}
+					GROUP BY te.participant_id, te.normalized_name, te.m_count
+				)
+				SELECT
+					participant_id AS "participantId",
+					normalized_name AS "normalizedName",
+					doc_count AS "docCount",
+					total_docs AS "totalDocsInCase",
+					mention_count_total AS "mentionCountAcrossCase"
+				FROM overlap
+			`,
+		)
+		return result as any
+	}
+
+	async findByCaseIdAndNormalizedNames(
+		caseId: number,
+		names: string[],
+	): Promise<Participant[]> {
+		const result = await this.db
+			.select({
+				id: participants.id,
+				documentId: participants.documentId,
+				name: participants.name,
+				normalizedName: participants.normalizedName,
+				role: participants.role,
+				roleConfidence: participants.roleConfidence,
+				entityType: participants.entityType,
+				mentionCount: participants.mentionCount,
+				mentions: participants.mentions,
+				clusterId: participants.clusterId,
+				relevanceScore: participants.relevanceScore,
+				extractionVersion: participants.extractionVersion,
+				createdAt: participants.createdAt,
+				updatedAt: participants.updatedAt,
+			})
+			.from(participants)
+			.innerJoin(documents, eq(participants.documentId, documents.id))
+			.where(
+				and(
+					eq(documents.caseId, caseId),
+					inArray(participants.normalizedName, names),
+				),
+			)
+		return result as Participant[]
+	}
+
+	async findCrossCaseEntityOverlap(
+		documentId: number,
+	): Promise<{
+		participantId: number
+		normalizedName: string
+		matchedCaseId: number
+		matchedCaseNumber: string
+		docCountInOtherCase: number
+		totalMentionsAcrossCases: number
+	}[]> {
+		const result = await this.db.execute(
+			sql`
+				WITH target_entities AS (
+					SELECT id, normalized_name, COALESCE(mention_count, 0) as m_count
+					FROM participants
+					WHERE document_id = ${documentId}
+				),
+				doc_case AS (
+					SELECT case_id FROM documents WHERE id = ${documentId} AND case_id IS NOT NULL
+				)
+				SELECT DISTINCT
+					te.id AS "participantId",
+					te.normalized_name AS "normalizedName",
+					d.case_id::int AS "matchedCaseId",
+					d.case_number AS "matchedCaseNumber",
+					COUNT(DISTINCT p.document_id) AS "docCountInOtherCase",
+					SUM(COALESCE(p.mention_count, 0)) AS "totalMentionsAcrossCases"
+				FROM target_entities te
+				JOIN participants p ON te.normalized_name = p.normalized_name AND p.document_id != ${documentId}
+				JOIN documents d ON p.document_id = d.id AND d.case_id IS NOT NULL
+				CROSS JOIN doc_case dc
+				WHERE d.case_id != dc.case_id
+				GROUP BY te.id, te.normalized_name, d.case_id, d.case_number
+			`,
+		)
+		return result as any
 	}
 
 	async findEntityOverlap(
@@ -134,6 +256,9 @@ export class ParticipantRepository extends BaseRepository<Participant, NewPartic
 				LIMIT ${limit}
 			`,
 		)
-		return result as unknown as EntityOverlapRow[]
+		return (result as unknown as EntityOverlapRow[]).map((row) => ({
+			...row,
+			entitySimilarity: Number(row.entitySimilarity),
+		}))
 	}
 }

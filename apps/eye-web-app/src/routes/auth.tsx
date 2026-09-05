@@ -48,7 +48,7 @@ function LiveLog() {
         {lines.map((line, i) => (
           <div
             key={i}
-            className="font-mono text-[11px] text-muted-foreground/60 animate-in fade-in duration-300"
+            className="font-mono text-[11px] text-outline font-medium animate-in fade-in duration-300"
           >
             {line}
           </div>
@@ -88,7 +88,7 @@ function SystemStats() {
       </div>
       <div className="space-y-1.5">
         <div className="flex justify-between items-center">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-outline">
             UPTIME
           </span>
           <span className="font-mono text-xs text-primary/80 tabular-nums">
@@ -96,7 +96,7 @@ function SystemStats() {
           </span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-outline">
             LATENCY
           </span>
           <span className="font-mono text-xs text-primary/80 tabular-nums">
@@ -104,7 +104,7 @@ function SystemStats() {
           </span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-outline">
             SESSIONS
           </span>
           <span className="font-mono text-xs text-primary tabular-nums">
@@ -143,7 +143,7 @@ function ConnectionStats() {
       </div>
       <div className="space-y-1.5">
         <div className="flex justify-between items-center">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-outline">
             NODES
           </span>
           <span className="font-mono text-xs text-primary/80 tabular-nums">
@@ -151,7 +151,7 @@ function ConnectionStats() {
           </span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-outline">
             ENCRYPT
           </span>
           <span className="font-mono text-xs text-primary/80">
@@ -159,7 +159,7 @@ function ConnectionStats() {
           </span>
         </div>
         <div className="flex justify-between items-center gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-outline">
             STATUS
           </span>
           <StatusChip variant="success" size="sm">
@@ -178,7 +178,7 @@ function TopNav() {
         <span className="font-mono text-lg font-bold tracking-widest text-primary">
           THE_EYE
         </span>
-        <span className="hidden md:block font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50">
+        <span className="hidden md:block font-mono text-[10px] uppercase tracking-widest text-outline">
           CASE_INTELLIGENCE_PLATFORM
         </span>
       </div>
@@ -207,12 +207,12 @@ function ScanLineIcon({ symbol }: { symbol: string }) {
 function DiagnosticStrip() {
   return (
     <div className="flex items-center justify-between w-full pt-4 mt-4 border-t border-outline-variant/30">
-      <span className="font-mono text-[10px] uppercase tracking-widest text-outline/50">
+      <span className="font-mono text-[10px] uppercase tracking-widest text-outline">
         PROTOCOL: OMNI_01
       </span>
       <div className="flex items-center gap-2">
         <StatusDot variant="success" size="sm" pulse />
-        <span className="font-mono text-[10px] uppercase tracking-widest text-outline/50">
+<span className="font-mono text-[10px] uppercase tracking-widest text-outline">
           SECURE_ENDPOINT_ACTIVE
         </span>
       </div>

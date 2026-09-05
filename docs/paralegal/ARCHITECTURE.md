@@ -35,8 +35,10 @@ All decisions below were made during the architecture grilling session. Each maj
 
 ## Pipeline Architecture
 
+PDF extract is specified in [pdf-pipeline.md](./pdf-pipeline.md) (PyMuPDF4LLM + Azure `ocr_function`). Search/RAG ingest is [rag.md](./rag.md).
+
 ```
-Upload → Azure OCR → Store text → BullMQ Queue → Coref Worker (Python)
+Upload → PDF extract (pymupdf4llm-hybrid | azure) → Store text → BullMQ → Coref Worker
                                                         │
                                           ┌─────────────┼─────────────┐
                                           ▼             ▼             ▼
@@ -67,7 +69,7 @@ Upload → Azure OCR → Store text → BullMQ Queue → Coref Worker (Python)
 
 ### Processing Order (single job, serial)
 
-1. OCR text is stored (existing pipeline)
+1. PDF extract stores text (today: Azure `prebuilt-read`; target: [pdf-pipeline.md](./pdf-pipeline.md))
 2. BullMQ enqueues a coreference-resolution job (existing)
 3. Python worker picks up job, runs spaCy + neuralcoref (existing)
 4. Worker **extracts participants** from coref clusters — every cluster becomes a participant row
@@ -344,7 +346,9 @@ Each chunk stores its `chunk_index`. Position weights from `weights.yaml` are re
 | Future | Local (GPU) | `gte-Qwen2-7B-instruct` | 32,768 | 3,584 |
 | Future (legal-specific) | API | `voyage-law-2` | 16,000 | 1,024 |
 
-**Schema is designed for 3,072 dimensions** (largest common model across options). pgvector handles any dimension — storing 768 in a 3,072-dim column wastes only padding bytes. This lets us swap models without migration. Start with `nomic-embed-text` (free, works offline), upgrade by flipping `EMBED_PROVIDER` and re-processing.
+**Schema uses a fixed pgvector typmod of 3,072 dimensions.** Same-model zero-padding does not change cosine; mixing models in one `<=>` scan does. Store `embedding_model` + `embedding_dimensions`, pad on write/query, filter by model. A model wider than 3072 (e.g. future `gte-Qwen2-7B-instruct` at 3584) needs a new column, not truncation. Start with `nomic-embed-text` (free, works offline), upgrade by flipping `EMBEDDING_PROVIDER` and re-processing.
+
+Workers call an `EmbeddingProvider` port (`openai` default, `ollama` for local nomic). Hash-skip and DB writes stay in the handler.
 
 ### Bag-of-Chunks Similarity
 
@@ -872,3 +876,4 @@ A `/admin/patterns` page in the web app:
 | **6** | Embedding cosine in similarity (bag-of-chunks Weighted Mean-of-MAX) | Phase 2 + 3 |
 | **7** | Network graph visualization (`/cases/:id/graph`) | Phase 3 |
 | **8** | Metadata scoring + composite tuning | Phase 6 |
+| **9** | Hybrid PDF extract + header-aware RAG ingest | [pdf-pipeline.md](./pdf-pipeline.md), [rag.md](./rag.md) |

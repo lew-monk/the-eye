@@ -9,21 +9,53 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as NetworkRouteImport } from './routes/network'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ProfileRouteRouteImport } from './routes/profile/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ProfileIndexRouteImport } from './routes/profile/index'
+import { Route as EntitiesEntityNameRouteImport } from './routes/entities/$entityName'
+import { Route as CasesCaseIdRouteImport } from './routes/cases/$caseId'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as ApiUploadSplatRouteImport } from './routes/api/upload.$'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api.trpc.$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiDocumentsDocumentIdFileRouteImport } from './routes/api/documents/$documentId/file'
 
+const NetworkRoute = NetworkRouteImport.update({
+  id: '/network',
+  path: '/network',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileRouteRoute = ProfileRouteRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileIndexRoute = ProfileIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProfileRouteRoute,
+} as any)
+const EntitiesEntityNameRoute = EntitiesEntityNameRouteImport.update({
+  id: '/entities/$entityName',
+  path: '/entities/$entityName',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CasesCaseIdRoute = CasesCaseIdRouteImport.update({
+  id: '/cases/$caseId',
+  path: '/cases/$caseId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthSignupRoute = AuthSignupRouteImport.update({
@@ -36,6 +68,11 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => AuthRoute,
 } as any)
+const ApiUploadSplatRoute = ApiUploadSplatRouteImport.update({
+  id: '/api/upload/$',
+  path: '/api/upload/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
   id: '/api/trpc/$',
   path: '/api/trpc/$',
@@ -46,68 +83,127 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDocumentsDocumentIdFileRoute =
+  ApiDocumentsDocumentIdFileRouteImport.update({
+    id: '/api/documents/$documentId/file',
+    path: '/api/documents/$documentId/file',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/profile': typeof ProfileRouteRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
+  '/network': typeof NetworkRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/cases/$caseId': typeof CasesCaseIdRoute
+  '/entities/$entityName': typeof EntitiesEntityNameRoute
+  '/profile/': typeof ProfileIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/api/upload/$': typeof ApiUploadSplatRoute
+  '/api/documents/$documentId/file': typeof ApiDocumentsDocumentIdFileRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
+  '/network': typeof NetworkRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/cases/$caseId': typeof CasesCaseIdRoute
+  '/entities/$entityName': typeof EntitiesEntityNameRoute
+  '/profile': typeof ProfileIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/api/upload/$': typeof ApiUploadSplatRoute
+  '/api/documents/$documentId/file': typeof ApiDocumentsDocumentIdFileRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/profile': typeof ProfileRouteRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
+  '/network': typeof NetworkRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/cases/$caseId': typeof CasesCaseIdRoute
+  '/entities/$entityName': typeof EntitiesEntityNameRoute
+  '/profile/': typeof ProfileIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/api/upload/$': typeof ApiUploadSplatRoute
+  '/api/documents/$documentId/file': typeof ApiDocumentsDocumentIdFileRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/profile'
     | '/auth'
+    | '/network'
     | '/auth/login'
     | '/auth/signup'
+    | '/cases/$caseId'
+    | '/entities/$entityName'
+    | '/profile/'
     | '/api/auth/$'
     | '/api/trpc/$'
+    | '/api/upload/$'
+    | '/api/documents/$documentId/file'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
+    | '/network'
     | '/auth/login'
     | '/auth/signup'
+    | '/cases/$caseId'
+    | '/entities/$entityName'
+    | '/profile'
     | '/api/auth/$'
     | '/api/trpc/$'
+    | '/api/upload/$'
+    | '/api/documents/$documentId/file'
   id:
     | '__root__'
     | '/'
+    | '/profile'
     | '/auth'
+    | '/network'
     | '/auth/login'
     | '/auth/signup'
+    | '/cases/$caseId'
+    | '/entities/$entityName'
+    | '/profile/'
     | '/api/auth/$'
     | '/api/trpc/$'
+    | '/api/upload/$'
+    | '/api/documents/$documentId/file'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ProfileRouteRoute: typeof ProfileRouteRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
+  NetworkRoute: typeof NetworkRoute
+  CasesCaseIdRoute: typeof CasesCaseIdRoute
+  EntitiesEntityNameRoute: typeof EntitiesEntityNameRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
+  ApiUploadSplatRoute: typeof ApiUploadSplatRoute
+  ApiDocumentsDocumentIdFileRoute: typeof ApiDocumentsDocumentIdFileRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/network': {
+      id: '/network'
+      path: '/network'
+      fullPath: '/network'
+      preLoaderRoute: typeof NetworkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -115,11 +211,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile/': {
+      id: '/profile/'
+      path: '/'
+      fullPath: '/profile/'
+      preLoaderRoute: typeof ProfileIndexRouteImport
+      parentRoute: typeof ProfileRouteRoute
+    }
+    '/entities/$entityName': {
+      id: '/entities/$entityName'
+      path: '/entities/$entityName'
+      fullPath: '/entities/$entityName'
+      preLoaderRoute: typeof EntitiesEntityNameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cases/$caseId': {
+      id: '/cases/$caseId'
+      path: '/cases/$caseId'
+      fullPath: '/cases/$caseId'
+      preLoaderRoute: typeof CasesCaseIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/signup': {
@@ -136,6 +260,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/api/upload/$': {
+      id: '/api/upload/$'
+      path: '/api/upload/$'
+      fullPath: '/api/upload/$'
+      preLoaderRoute: typeof ApiUploadSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/trpc/$': {
       id: '/api/trpc/$'
       path: '/api/trpc/$'
@@ -150,8 +281,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/documents/$documentId/file': {
+      id: '/api/documents/$documentId/file'
+      path: '/api/documents/$documentId/file'
+      fullPath: '/api/documents/$documentId/file'
+      preLoaderRoute: typeof ApiDocumentsDocumentIdFileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
+
+interface ProfileRouteRouteChildren {
+  ProfileIndexRoute: typeof ProfileIndexRoute
+}
+
+const ProfileRouteRouteChildren: ProfileRouteRouteChildren = {
+  ProfileIndexRoute: ProfileIndexRoute,
+}
+
+const ProfileRouteRouteWithChildren = ProfileRouteRoute._addFileChildren(
+  ProfileRouteRouteChildren,
+)
 
 interface AuthRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
@@ -167,9 +317,15 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ProfileRouteRoute: ProfileRouteRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
+  NetworkRoute: NetworkRoute,
+  CasesCaseIdRoute: CasesCaseIdRoute,
+  EntitiesEntityNameRoute: EntitiesEntityNameRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
+  ApiUploadSplatRoute: ApiUploadSplatRoute,
+  ApiDocumentsDocumentIdFileRoute: ApiDocumentsDocumentIdFileRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

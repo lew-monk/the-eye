@@ -1,9 +1,9 @@
-import { pgTable, text, integer, timestamp, serial, real, uniqueIndex, index } from 'drizzle-orm/pg-core'
+import { pgTable, text, integer, timestamp, serial, real, uniqueIndex, index, boolean } from 'drizzle-orm/pg-core'
 import { customType } from 'drizzle-orm/pg-core'
 import { documents } from './documents'
+import { EMBEDDING_COLUMN_DIMENSIONS } from '../embeddings'
 
-// Custom vector type for pgvector (sized for largest model we might use)
-export const EMBEDDING_COLUMN_DIMENSIONS = 3072
+export { EMBEDDING_COLUMN_DIMENSIONS }
 
 export const vector = customType<{ data: number[]; driverData: string; config: { dimensions: number } }>({
 	dataType(config) {
@@ -33,6 +33,8 @@ export const participants = pgTable('participants', {
 	clusterId: integer('cluster_id'),
 	relevanceScore: real('relevance_score').default(0),
 	extractionVersion: integer('extraction_version').default(1),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
 	documentIdx: index('idx_participants_document_id').on(table.documentId),
 	normalizedNameIdx: index('idx_participants_normalized_name').on(table.normalizedName),
@@ -51,13 +53,18 @@ export const documentChunks = pgTable('document_chunks', {
 	embedding: vector('embedding', { dimensions: EMBEDDING_COLUMN_DIMENSIONS }),
 	embeddingProvider: text('embedding_provider'),
 	embeddingModel: text('embedding_model'),
+	embeddingDimensions: integer('embedding_dimensions'),
 	chunkTextHash: text('chunk_text_hash'),
 	tokenCount: integer('token_count'),
 	positionWeight: real('position_weight'),
+	parentChunkIndex: integer('parent_chunk_index'),
+	ocrConfidence: real('ocr_confidence'),
 	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
 	docChunkIdx: uniqueIndex('idx_chunks_document_chunk').on(table.documentId, table.chunkIndex),
 	documentIdx: index('idx_chunks_document_id').on(table.documentId),
+	embeddingModelIdx: index('idx_chunks_embedding_model').on(table.embeddingModel),
 }))
 
 // Types

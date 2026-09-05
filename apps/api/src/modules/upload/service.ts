@@ -1,15 +1,24 @@
 import { getFileExtension, isSupportedFileType, validateFileSize, validateDocumentUpload } from '@workspace/shared'
-import { OCRService } from '@workspace/core'
-import { writeFile } from 'fs/promises'
+import { getOCRService } from '@workspace/core'
 
 export abstract class UploadService {
-	static async processUpload(file: File, documentType: string): Promise<{ documentId: number }> {
+	static async processUpload(file: File, documentType: string, caseId?: number): Promise<{ documentId: number }> {
+		const started = Date.now()
+		console.log('[UPLOAD] received', {
+			filename: file.name,
+			size: file.size,
+			documentType,
+			caseId: caseId ?? null,
+		})
+
 		if (!isSupportedFileType(file.name)) {
+			console.warn('[UPLOAD] rejected unsupported type', { filename: file.name })
 			throw new Error('Unsupported file type')
 		}
 
 		if (!validateFileSize(file.size)) {
-			throw new Error('File size too large (max 50MB)')
+			console.warn('[UPLOAD] rejected oversized file', { filename: file.name, size: file.size })
+			throw new Error('File size too large (max 200MB)')
 		}
 
 		const validation = validateDocumentUpload({
@@ -20,10 +29,21 @@ export abstract class UploadService {
 		})
 
 		const fileBuffer = Buffer.from(await file.arrayBuffer())
-		// const tempPath = `/tmp/${Date.now()}_${file.name}`
-		// await writeFile(tempPath, fileBuffer)
+		console.log('[UPLOAD] buffered', {
+			filename: file.name,
+			bytes: fileBuffer.byteLength,
+			ms: Date.now() - started,
+		})
 
-		const queueJob = new OCRService({ useQueue: true })
-		return queueJob.processDocument(fileBuffer, validation)
+		const ocr = getOCRService({ useQueue: true })
+		const result = await ocr.processDocument(fileBuffer, validation, {}, caseId)
+
+		console.log('[UPLOAD] accepted', {
+			documentId: result.documentId,
+			filename: file.name,
+			ms: Date.now() - started,
+		})
+
+		return result
 	}
 }

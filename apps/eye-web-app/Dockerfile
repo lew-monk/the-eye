@@ -1,38 +1,28 @@
-# Use the official Bun image
 FROM oven/bun:1 AS base
-
-# Install dependencies only when needed
-FROM base AS deps
 WORKDIR /app
 
-# Copy package files
 COPY package.json bun.lock ./
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/shared/package.json ./packages/shared/
-COPY apps/web/package.json ./apps/web/
+COPY packages/core/package.json ./packages/core/
+COPY packages/workers/package.json ./packages/workers/
 COPY apps/api/package.json ./apps/api/
+COPY apps/eye-web-app/package.json ./apps/eye-web-app/
 
-# Install dependencies
-RUN bun install --frozen-lockfile
-
-# Build the shared packages
-FROM deps AS builder
-WORKDIR /app
-
-# Copy source code
 COPY . .
 
-# Build shared packages first
-RUN bun run build --filter='@workspace/shared'
-RUN bun run build --filter='@workspace/ui'
+RUN bun install --frozen-lockfile
+RUN bun run build --filter='@workspace/shared' \
+	&& bun run build --filter='@workspace/ui' \
+	&& bun run build --filter='@workspace/eye-web-app'
 
-# Build the web app
-RUN bun run build --filter='@workspace/web'
+FROM oven/bun:1 AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=3000
 
-# Production image for web
-FROM nginx:alpine AS web
-COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
-COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=base /app /app
+WORKDIR /app/apps/eye-web-app
 
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+EXPOSE 3000
+CMD ["bun", "run", "dist/server/server.js"]

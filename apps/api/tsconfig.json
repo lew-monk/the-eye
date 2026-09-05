@@ -2,11 +2,16 @@
   "extends": "../../tsconfig.json",
   "include": ["src/**/*"],
   "exclude": ["node_modules"],
-"skipLibCheck": true, // Add this line
   "compilerOptions": {
     "baseUrl": ".",
+    "exactOptionalPropertyTypes": false,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@workspace/shared": ["../../packages/shared/src"],
+      "@workspace/core": ["../../packages/core/src"],
+      "@workspace/workers": ["../../packages/workers/src"],
+      "drizzle-orm": ["../../packages/shared/node_modules/drizzle-orm"],
+      "drizzle-orm/*": ["../../packages/shared/node_modules/drizzle-orm/*"]
     }
   }
 }

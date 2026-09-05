@@ -21,10 +21,10 @@ const PermissionModel = t.Object({
 
 const RateLimitModel = t.Optional(
 	t.Object({
-		resource: t.String(),
-		windowMs: t.Number(),
-		maxRequests: t.Number(),
-		message: t.String(),
+		resource: t.Optional(t.String()),
+		windowMs: t.Optional(t.Number()),
+		maxRequests: t.Optional(t.Number()),
+		message: t.Optional(t.String()),
 		maxBytes: t.Optional(t.Number()),
 	}),
 )

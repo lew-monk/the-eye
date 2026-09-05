@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 from collections import Counter
 from pathlib import Path
@@ -35,10 +36,16 @@ ENTITY_TYPE_MAP: Dict[str, str] = {
 }
 
 
-def load_patterns(path: Path | str) -> List[Dict[str, Any]]:
+def load_patterns_config(path: Path | str) -> tuple[List[Dict[str, Any]], int]:
     with open(path) as f:
-        data = yaml.safe_load(f)
-    return data.get("roles", [])
+        data = yaml.safe_load(f) or {}
+    version = int(data.get("version") or 1)
+    return data.get("roles", []), version
+
+
+def load_patterns(path: Path | str) -> List[Dict[str, Any]]:
+    roles, _ = load_patterns_config(path)
+    return roles
 
 
 def load_titles(path: Path | str) -> Dict[str, List[str]]:
@@ -343,6 +350,24 @@ def _token_count(text: str) -> int:
 HEADROOM_FACTOR: float = 0.9
 
 
+def _chunk_row(
+    chunk_index: int,
+    text: str,
+    position_weight: float,
+    parent_chunk_index: Optional[int] = None,
+) -> Dict[str, Any]:
+    row: Dict[str, Any] = {
+        "chunkIndex": chunk_index,
+        "text": text,
+        "tokenCount": _token_count(text),
+        "positionWeight": position_weight,
+        "chunkTextHash": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+    }
+    if parent_chunk_index is not None:
+        row["parentChunkIndex"] = parent_chunk_index
+    return row
+
+
 def _paragraph_chunk(text: str, max_tokens: int) -> List[str]:
     paragraphs = re.split(r"\n\n+", text)
     chunks: List[str] = []
@@ -380,13 +405,15 @@ def chunk_text(
     max_tokens: int = 512,
     weights: Optional[Dict[str, Any]] = None,
     document_type: Optional[str] = None,
+    parent_max_tokens: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     if not text or not text.strip():
-        return [{"chunkIndex": 0, "text": "", "tokenCount": 0, "positionWeight": 1.0}]
+        return [_chunk_row(0, "", 1.0)]
 
-    effective_max = int(max_tokens * HEADROOM_FACTOR)
-
-    raw_chunks = _paragraph_chunk(text, effective_max)
+    retrieval_max = max(1, int(max_tokens * HEADROOM_FACTOR))
+    parent_cap = retrieval_max
+    if parent_max_tokens is not None:
+        parent_cap = max(retrieval_max, int(parent_max_tokens * HEADROOM_FACTOR))
 
     type_weights: Dict[str, float] = {}
     if weights:
@@ -396,12 +423,25 @@ def chunk_text(
         else:
             type_weights = weights.get("default", {})
 
-    return [
-        {
-            "chunkIndex": i,
-            "text": c,
-            "tokenCount": _token_count(c),
-            "positionWeight": _resolve_weight(type_weights, i),
-        }
-        for i, c in enumerate(raw_chunks)
-    ]
+    parent_windows = _paragraph_chunk(text, parent_cap)
+    chunks: List[Dict[str, Any]] = []
+    chunk_index = 0
+
+    for section_index, parent_text in enumerate(parent_windows):
+        children = _paragraph_chunk(parent_text, retrieval_max)
+        weight = _resolve_weight(type_weights, section_index)
+
+        if len(children) <= 1:
+            leaf = children[0] if children else parent_text
+            chunks.append(_chunk_row(chunk_index, leaf, weight))
+            chunk_index += 1
+            continue
+
+        parent_index = chunk_index
+        chunks.append(_chunk_row(parent_index, parent_text, weight))
+        chunk_index += 1
+        for child in children:
+            chunks.append(_chunk_row(chunk_index, child, weight, parent_index))
+            chunk_index += 1
+
+    return chunks

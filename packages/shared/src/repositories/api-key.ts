@@ -29,6 +29,8 @@ export class ApiKeyRepository extends BaseRepository<ApiKey> {
 			allowedIps: [],
 			allowedDomains: [],
 			expiresAt,
+			createdAt: new Date(),
+			updatedAt: new Date(),
 		})
 		return result
 	}

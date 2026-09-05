@@ -18,16 +18,21 @@ export interface TRPCContext {
 		subscriptionTier: string | null
 		organizationId: string | null
 	} | null
+	formData?: FormData
 }
 
-export const createTRPCContext = async (opts: { headers: Headers }): Promise<TRPCContext> => {
+export const createTRPCContext = async (opts: {
+	headers: Headers
+	formData?: FormData
+}): Promise<TRPCContext> => {
 	const session = await auth.api.getSession({ headers: opts.headers })
 	if (!session) {
-		return { session: null, user: null }
+		return { session: null, user: null, formData: opts.formData }
 	}
 	return {
 		session: session.session as TRPCContext['session'],
 		user: session.user as TRPCContext['user'],
+		formData: opts.formData,
 	}
 }
 

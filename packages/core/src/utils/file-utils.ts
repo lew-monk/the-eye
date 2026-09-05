@@ -24,7 +24,8 @@ export function getMimeType(filename: string): string {
 	return mimeTypes[extension] || 'application/octet-stream'
 }
 
+export const MAX_UPLOAD_BYTES = 200 * 1024 * 1024 // 200MB
+
 export function validateFileSize(fileSize: number): boolean {
-	const maxSize = 50 * 1024 * 1024 // 50MB
-	return fileSize <= maxSize
+	return fileSize <= MAX_UPLOAD_BYTES
 }

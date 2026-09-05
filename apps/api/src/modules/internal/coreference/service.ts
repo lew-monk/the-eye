@@ -10,7 +10,21 @@ export abstract class CoreferenceService {
 				? (document.fullContent as any).content || ''
 				: ''
 
-		const corefSourceTextHash = await coreferenceRepository.getSourceTextHash(documentId)
+		const stored = await coreferenceRepository.findByDocumentId(documentId)
+		const existingCoref = stored
+			? {
+					resolvedText: stored.resolvedText,
+					clusters: stored.clusters.map((c) => c.mentions.map((m) => m.text)),
+					mentions: stored.clusters.flatMap((c) =>
+						c.mentions.map((m) => ({
+							text: m.text,
+							start: m.startPos,
+							end: m.endPos,
+							cluster_id: c.clusterIndex,
+						})),
+					),
+				}
+			: null
 
 		return {
 			documentId: document.id,
@@ -18,7 +32,8 @@ export abstract class CoreferenceService {
 			documentType: document.documentType,
 			textHash: (document as any).textHash || null,
 			fileHash: (document as any).fileHash || null,
-			coreferenceSourceTextHash: corefSourceTextHash,
+			coreferenceSourceTextHash: stored?.sourceTextHash ?? null,
+			existingCoref,
 			status: document.status,
 		}
 	}
@@ -48,13 +63,24 @@ export abstract class CoreferenceService {
 
 		await documentRepository.addProcessingLog({
 			documentId,
-			action: 'coreference_completed',
+			action: 'coref_completed',
 			details: {
 				model: body?.model,
 				modelVersion: body?.model_version,
 				inputCharCount: body?.input_char_count,
 				processingTimeMs: body?.processing_time_ms,
+				chunked: body?.chunked,
+				chunkCount: body?.chunk_count,
+				clusters: Array.isArray(body?.clusters) ? body.clusters.length : undefined,
+				mentions: Array.isArray(body?.mentions) ? body.mentions.length : undefined,
 			},
+		})
+
+		console.log(`[DOC ${documentId}] coref_completed`, {
+			model: body?.model,
+			inputCharCount: body?.input_char_count,
+			processingTimeMs: body?.processing_time_ms,
+			chunkCount: body?.chunk_count,
 		})
 
 		return { success: true }

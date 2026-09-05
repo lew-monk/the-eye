@@ -42,7 +42,7 @@ export class BullMQClient {
 
 	// Utility method to get queue info
 	async getQueueInfo(queueName: string): Promise<any> {
-		const queue = new Queue(queueName, { connection: this.connection })
+		const queue = new Queue(queueName, { connection: this.connection as any })
 		const info = await queue.getJobCounts()
 		await queue.close()
 		return info

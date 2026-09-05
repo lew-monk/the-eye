@@ -19,7 +19,6 @@ export const Route = createFileRoute('/auth/login')({
 })
 
 const loginSchema = z.object({
-  name: z.string().min(1, 'Name is required').transform((s) => s.trim()),
   email: z
     .string()
     .min(1, 'Email is required')
@@ -57,7 +56,9 @@ function LoginForm() {
         return
       }
 
-      navigate({ to: '/' })
+      const redirectTo = sessionStorage.getItem('redirectTo') || '/'
+      sessionStorage.removeItem('redirectTo')
+      navigate({ to: redirectTo })
     },
   })
 
@@ -149,7 +150,7 @@ function LoginRoute() {
         PARALEGAL_OPS
       </h1>
 
-      <p className="font-mono text-sm text-muted-foreground leading-relaxed max-w-sm">
+      <p className="font-mono text-sm text-outline leading-relaxed max-w-sm">
         Authenticate to access the case intelligence platform. All sessions are
         encrypted end-to-end.
       </p>
@@ -161,7 +162,7 @@ function LoginRoute() {
       <div className="text-center">
         <Link
           to="/auth/signup"
-          className="font-mono text-xs uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors duration-500"
+          className="font-mono text-xs uppercase tracking-wider text-outline hover:text-primary transition-colors duration-500"
         >
           REQUEST_ACCESS_CREDENTIALS
         </Link>

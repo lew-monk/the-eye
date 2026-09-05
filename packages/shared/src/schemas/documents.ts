@@ -1,12 +1,15 @@
-import { pgTable, text, integer, jsonb, timestamp, serial, real, index } from 'drizzle-orm/pg-core'
+import { pgTable, text, integer, jsonb, timestamp, serial, real, index, boolean } from 'drizzle-orm/pg-core'
+import { cases } from './cases'
 
 export const documents = pgTable('documents', {
 	id: serial('id').primaryKey(),
+	caseId: integer('case_id').references(() => cases.id, { onDelete: 'set null' }),
 	filename: text('filename').notNull(),
 	fileType: text('file_type').notNull(),
 	fileSize: integer('file_size').notNull(),
-	uploadedAt: timestamp('uploaded_at').defaultNow().notNull(),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
 	processedAt: timestamp('processed_at'),
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
 
 	// Extracted data
 	structuredData: jsonb('structured_data'),
@@ -23,6 +26,11 @@ export const documents = pgTable('documents', {
 	fileHash: text('file_hash'),
 	textHash: text('text_hash'),
 
+	// Object storage (original file)
+	storageKey: text('storage_key'),
+	storageBucket: text('storage_bucket'),
+	contentType: text('content_type'),
+
 	// Status
 	status: text('status').default('pending').notNull(),
 	errorMessage: text('error_message'),
@@ -32,10 +40,13 @@ export const documents = pgTable('documents', {
 	embeddingVersion: integer('embedding_version').default(1),
 	embeddingProvider: text('embedding_provider'),
 	embeddingModel: text('embedding_model'),
+	isCurrent: boolean('is_current').default(true).notNull(),
+	supersededBy: integer('superseded_by'),
 }, (table) => ({
 	statusIdx: index('documents_status_idx').on(table.status),
 	documentTypeIdx: index('documents_type_idx').on(table.documentType),
 	caseNumberIdx: index('documents_case_number_idx').on(table.caseNumber),
+	caseIdIdx: index('documents_case_id_idx').on(table.caseId),
 	fileHashIdx: index('documents_file_hash_idx').on(table.fileHash),
 	textHashIdx: index('documents_text_hash_idx').on(table.textHash),
 }))
@@ -43,9 +54,10 @@ export const documents = pgTable('documents', {
 export const processingLogs = pgTable('processing_logs', {
 	id: serial('id').primaryKey(),
 	documentId: integer('document_id').references(() => documents.id),
-	timestamp: timestamp('timestamp').defaultNow().notNull(),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
 	action: text('action').notNull(),
 	details: jsonb('details'),
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
 // Types

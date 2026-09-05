@@ -37,6 +37,8 @@ export const apiKeys = pgTable('api_keys', {
 	isActive: boolean('is_active').default(true),
 	allowedIps: text('allowed_ips').array(),
 	allowedDomains: text('allowed_domains').array(),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
 export const apiKeyUsages = pgTable('api_key_usages', {
@@ -54,7 +56,8 @@ export const apiKeyUsages = pgTable('api_key_usages', {
 	bytesProcessed: bigint('bytes_processed', { mode: 'number' }).notNull(),
 	creditsUsed: integer('credits_used').notNull(),
 	ipAddress: text('ip_address').notNull(),
-	timestamp: timestamp('timestamp').defaultNow().notNull(),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
 export type ApiKey = typeof apiKeys.$inferSelect
