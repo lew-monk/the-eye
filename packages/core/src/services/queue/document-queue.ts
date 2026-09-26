@@ -28,7 +28,7 @@ export class DocumentQueue {
 		this.client = new BullMQClient()
 		this.processor = new DocumentProcessor()
 
-		const connection = this.client.getConnection()
+		const connection = this.client.getConnectionOptions()
 
 		console.log('🔌 [DOCUMENT QUEUE] Initializing queues...')
 		this.queue = new Queue('document-processing', { connection })

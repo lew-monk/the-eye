@@ -1,5 +1,6 @@
-import { eq, sql, and, ilike, inArray } from 'drizzle-orm'
+import { eq, sql, and, ilike, inArray, type SQL } from 'drizzle-orm'
 import { BaseRepository } from './base'
+import { sqlRows } from './sql-rows'
 import { participants, documents, type Participant, type NewParticipant } from '../schemas'
 
 export interface ParticipantWithCase extends Participant {
@@ -35,7 +36,7 @@ export class ParticipantRepository extends BaseRepository<Participant, NewPartic
 		offset?: number
 	}): Promise<{ data: ParticipantWithCase[]; total: number }> {
 		const { role, name, caseNumber, limit = 20, offset = 0 } = opts
-		const conditions: any[] = []
+		const conditions: SQL[] = []
 
 		if (role) conditions.push(eq(participants.role, role))
 		if (name) conditions.push(ilike(participants.normalizedName, `%${name}%`))
@@ -132,7 +133,13 @@ export class ParticipantRepository extends BaseRepository<Participant, NewPartic
 				FROM overlap
 			`,
 		)
-		return result as any
+		return sqlRows<{
+			participantId: number
+			normalizedName: string
+			docCount: number
+			totalDocsInCase: number
+			mentionCountAcrossCase: number
+		}>(result)
 	}
 
 	async findByCaseIdAndNormalizedNames(
@@ -202,7 +209,14 @@ export class ParticipantRepository extends BaseRepository<Participant, NewPartic
 				GROUP BY te.id, te.normalized_name, d.case_id, d.case_number
 			`,
 		)
-		return result as any
+		return sqlRows<{
+			participantId: number
+			normalizedName: string
+			matchedCaseId: number
+			matchedCaseNumber: string
+			docCountInOtherCase: number
+			totalMentionsAcrossCases: number
+		}>(result)
 	}
 
 	async findEntityOverlap(
@@ -256,7 +270,7 @@ export class ParticipantRepository extends BaseRepository<Participant, NewPartic
 				LIMIT ${limit}
 			`,
 		)
-		return (result as unknown as EntityOverlapRow[]).map((row) => ({
+		return sqlRows<EntityOverlapRow>(result).map((row) => ({
 			...row,
 			entitySimilarity: Number(row.entitySimilarity),
 		}))

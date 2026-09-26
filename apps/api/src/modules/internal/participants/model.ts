@@ -1,4 +1,4 @@
-import { t } from 'elysia'
+import { t, type Static } from 'elysia'
 
 export const ParticipantModel = {
 	body: t.Object({
@@ -18,3 +18,6 @@ export const ParticipantModel = {
 		extractionVersion: t.Number(),
 	}),
 }
+
+export type ParticipantStoreBody = Static<typeof ParticipantModel.body>
+export type ParticipantIngest = ParticipantStoreBody['participants'][number]

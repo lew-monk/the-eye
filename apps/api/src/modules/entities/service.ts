@@ -2,84 +2,21 @@ import { db } from '@workspace/shared'
 import { participants, documents } from '@workspace/shared'
 import { eq, sql } from 'drizzle-orm'
 import { participantRepository, documentRepository, coreferenceRepository } from '@workspace/shared'
+import type {
+	CoOccurring,
+	CoOccurrenceNetwork,
+	ConfidenceResult,
+	EntityAppearance,
+	EntityDossier,
+	MentionContextItem,
+} from './types'
 
-interface EntityAppearance {
-	participantId: number
-	documentId: number
-	filename: string
-	caseId: number | null
-	caseNumber: string | null
-	documentType: string
-	role: string
-	roleConfidence: number | null
-	mentionCount: number
-	relevanceScore: number | null
-	mentions: string[] | null
-	clusterId: number | null
-}
-
-interface RoleDistribution {
-	role: string
-	count: number
-}
-
-interface CoOccurring {
-	normalizedName: string
-	displayName: string
-	docCount: number
-	roles: string[]
-}
-
-interface MentionContextItem {
-	participantId: number
-	documentId: number
-	participantName: string
-	allMentions: string[]
-	caseId: number | null
-	caseNumber: string | null
-	filename: string
-	mentions: { text: string; start: number; end: number; context: string }[]
-}
-
-interface ConfidenceResult {
-	overallScore: number
-	roleConsistency: number
-	documentCoverage: number
-	roles: { role: string; count: number; documents: number }[]
-	flags: string[]
-}
-
-export interface EntityDossier {
-	normalizedName: string
-	displayName: string
-	totalMentions: number
-	totalDocuments: number
-	totalCases: number
-	roleDistribution: { role: string; count: number; percentage: number }[]
-	primaryRole: string
-	appearances: EntityAppearance[]
-	coOccurringEntities: CoOccurring[]
-	mentionContexts: MentionContextItem[]
-	confidence: ConfidenceResult
-}
-
-export interface CoOccurrenceNode {
-	normalizedName: string
-	displayName: string
-	role: string
-	connections: number
-}
-
-export interface CoOccurrenceEdge {
-	source: string
-	target: string
-	weight: number
-}
-
-export interface CoOccurrenceNetwork {
-	nodes: CoOccurrenceNode[]
-	edges: CoOccurrenceEdge[]
-}
+export type {
+	CoOccurrenceEdge,
+	CoOccurrenceNetwork,
+	CoOccurrenceNode,
+	EntityDossier,
+} from './types'
 
 export abstract class EntityService {
 	static async getDossier(normalizedName: string): Promise<EntityDossier | null> {

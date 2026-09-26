@@ -6,7 +6,7 @@ const workers: Worker[] = []
 
 export function registerAllWorkers(): () => Promise<void> {
   const client = new BullMQClient()
-  const connection = client.getConnection()
+  const connection = client.getConnectionOptions()
 
   for (const [queueName, handler] of Object.entries(HANDLERS)) {
     const worker = new Worker(queueName, handler, { connection })

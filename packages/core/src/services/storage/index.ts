@@ -22,8 +22,9 @@ export function createObjectStorageDriver(
 					'S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, and S3_BUCKET are required when STORAGE_PROVIDER is minio or s3',
 				)
 			}
+			const endpoint = env.S3_ENDPOINT
 			return new S3Driver({
-				endpoint: env.S3_ENDPOINT,
+				...(endpoint ? { endpoint } : {}),
 				region: env.S3_REGION ?? 'us-east-1',
 				accessKeyId,
 				secretAccessKey,

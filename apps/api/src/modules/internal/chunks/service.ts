@@ -1,11 +1,19 @@
 import { getDocumentQueue } from '@workspace/core'
 import { documentRepository, chunkRepository, participantRepository } from '@workspace/shared'
-import type { SimilarQuery, SimilarCaseResult, SimilarCasesResponse } from '@workspace/shared'
+import type { Document, NewDocumentChunk, SimilarQuery, SimilarCaseResult, SimilarCasesResponse } from '@workspace/shared'
+import type { ChunkIngest } from './model'
+import {
+	addWeightedHit,
+	asNumberArray,
+	meanOfMax,
+	toSimilarCaseResult,
+	type WeightedChunkHits,
+} from './similar-score'
 
 export abstract class ChunksService {
 	static async store(
 		documentId: number,
-		chunks: any[],
+		chunks: ChunkIngest[],
 		embeddingVersion: number,
 		embeddingProvider: string,
 		embeddingModel: string,
@@ -14,8 +22,7 @@ export abstract class ChunksService {
 		const document = await documentRepository.findById(documentId)
 		if (!document) return null
 
-		// Strip empty embedding arrays so rows stay "pending embed"
-		const rows = chunks.map((c) => {
+		const rows: NewDocumentChunk[] = chunks.map((c) => {
 			const { embedding, ...rest } = c
 			const hasVector = Array.isArray(embedding) && embedding.length > 0
 			return {
@@ -31,13 +38,12 @@ export abstract class ChunksService {
 		await chunkRepository.deleteByDocumentId(documentId)
 		const inserted = await chunkRepository.createMany(rows)
 
-		// Persist text chunks first. Do not mark embeddings complete when provider is "none".
 		const embeddingsPending =
 			embeddingProvider === 'none' ||
 			embeddingVersion === 0 ||
-			rows.every((r) => !('embedding' in r) || !Array.isArray((r as any).embedding) || (r as any).embedding.length === 0)
+			rows.every((r) => !r.embedding || r.embedding.length === 0)
 
-		const documentUpdates: Record<string, any> = {}
+		const documentUpdates: Partial<Document> = {}
 		if (normalizedText !== undefined) {
 			documentUpdates.normalizedText = normalizedText
 		}
@@ -47,7 +53,7 @@ export abstract class ChunksService {
 			documentUpdates.embeddingModel = embeddingModel
 		}
 		if (Object.keys(documentUpdates).length > 0) {
-			await documentRepository.updateById(documentId, documentUpdates as any)
+			await documentRepository.updateById(documentId, documentUpdates)
 		}
 
 		await documentRepository.addProcessingLog({
@@ -83,10 +89,7 @@ export abstract class ChunksService {
 			chunkRepository.findByDocumentId(targetDocumentId),
 		])
 
-		const candidateAggregates: Record<
-			number,
-			{ weightedSum: number; totalWeight: number }
-		> = {}
+		const candidateAggregates: Record<number, WeightedChunkHits> = {}
 
 		const embeddingModel = target.embeddingModel ?? null
 		const queryChunks = targetChunks.filter((c) => Array.isArray(c.embedding) && c.embedding.length > 0)
@@ -108,12 +111,7 @@ export abstract class ChunksService {
 		const chunkResults = await Promise.all(chunkQueries)
 		for (const { positionWeight, similar } of chunkResults) {
 			for (const row of similar) {
-				const cid = row.documentId
-				if (!candidateAggregates[cid]) {
-					candidateAggregates[cid] = { weightedSum: 0, totalWeight: 0 }
-				}
-				candidateAggregates[cid].weightedSum += row.cosineSimilarity * positionWeight
-				candidateAggregates[cid].totalWeight += positionWeight
+				addWeightedHit(candidateAggregates, row.documentId, row.cosineSimilarity, positionWeight)
 			}
 		}
 		const entityMap = new Map<number, number>()
@@ -129,34 +127,9 @@ export abstract class ChunksService {
 		const similarCases: SimilarCaseResult[] = []
 		for (const cid of candidateIds) {
 			const entityScore = entityMap.get(cid) ?? 0
-			const agg = candidateAggregates[cid]
-			const embeddingCos = agg && agg.totalWeight > 0
-				? agg.weightedSum / agg.totalWeight
-				: null
-
-			const score = alpha * entityScore + beta * (embeddingCos ?? 0) + gamma * 0
-
-			const reasons: string[] = []
-			if (entityScore > 0) {
-				reasons.push(`Shared participants (entity overlap: ${entityScore.toFixed(2)})`)
-			}
-			if (embeddingCos !== null && embeddingCos > 0) {
-				reasons.push(`Similar legal substance (embedding: ${embeddingCos.toFixed(2)})`)
-			}
-
+			const embeddingCos = meanOfMax(candidateAggregates[cid])
 			const match = entityOverlapRows.find((r) => r.id === cid)
-			similarCases.push({
-				caseId: cid,
-				caseNumber: match?.caseNumber ?? '',
-				documentType: match?.documentType ?? '',
-				score: Math.round(score * 100) / 100,
-				breakdown: {
-					entityOverlap: entityScore,
-					embeddingCos,
-					metadataScore: 0,
-				},
-				reasons,
-			})
+			similarCases.push(toSimilarCaseResult(cid, entityScore, embeddingCos, alpha, beta, gamma, match))
 		}
 
 		similarCases.sort((a, b) => b.score - a.score)
@@ -167,10 +140,4 @@ export abstract class ChunksService {
 			embeddingModel,
 		}
 	}
-}
-
-function asNumberArray(value: unknown): number[] {
-	if (Array.isArray(value)) return value.map(Number)
-	if (value instanceof Float32Array) return Array.from(value)
-	return []
 }

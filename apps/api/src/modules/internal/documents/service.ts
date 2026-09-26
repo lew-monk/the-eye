@@ -28,7 +28,7 @@ export abstract class DocumentsService {
 			details: { previousStatus: document.status },
 		})
 
-		const textHash = (document as any).textHash
+		const textHash = document.textHash
 		if (textHash) {
 			await getDocumentQueue().addDocumentToCorefQueue(documentId, textHash)
 		}

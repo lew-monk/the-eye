@@ -1,4 +1,4 @@
-import { t } from 'elysia'
+import { t, type Static } from 'elysia'
 
 export const ChunkModel = {
 	body: t.Object({
@@ -20,3 +20,6 @@ export const ChunkModel = {
 		embeddingModel: t.String(),
 	}),
 }
+
+export type ChunkStoreBody = Static<typeof ChunkModel.body>
+export type ChunkIngest = ChunkStoreBody['chunks'][number]

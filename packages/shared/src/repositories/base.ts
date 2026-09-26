@@ -1,6 +1,6 @@
-import { eq, and, or, desc, asc, SQL, sql } from 'drizzle-orm'
+import { eq, and, desc, asc, SQL, sql, getTableColumns } from 'drizzle-orm'
+import type { PgColumn, PgTable } from 'drizzle-orm/pg-core'
 import { db } from '../database'
-import { PgTable } from 'drizzle-orm/pg-core'
 
 export interface BaseEntity {
 	id: number | string
@@ -35,30 +35,53 @@ export abstract class BaseRepository<T extends BaseEntity, TInsert = Omit<T, 'id
 		this.table = table
 	}
 
+	protected columns() {
+		return getTableColumns(this.table)
+	}
+
+	protected idColumn(): PgColumn {
+		const id = this.columns().id
+		if (!id) throw new Error('table has no id column')
+		return id
+	}
+
+	protected orderColumn(orderField: string): PgColumn {
+		const cols = this.columns()
+		return (orderField in cols ? cols[orderField] : cols.id) ?? this.idColumn()
+	}
+
+	/** Drizzle `returning()` is untyped on PgTable; narrow once at this seam. */
+	protected asRow(row: object): T {
+		return row as unknown as T
+	}
+
+	protected asRows(rows: object[]): T[] {
+		return rows.map((row) => this.asRow(row))
+	}
+
 	async create(data: Omit<TInsert, 'id'>): Promise<T> {
 		const result = await this.db.insert(this.table).values(data).returning()
-		if (!result[0]) {
-			throw new Error(`Failed to create ${this.table}`)
+		const row = result[0]
+		if (!row) {
+			throw new Error('Failed to create row')
 		}
-		return result[0] as unknown as T
+		return this.asRow(row)
 	}
 
 	async findById(id: number | string): Promise<T | null> {
 		const [result] = await this.db
 			.select()
 			.from(this.table)
-			.where(eq((this.table as any).id, id))
+			.where(eq(this.idColumn(), id))
 			.limit(1)
-		return result as T || null
+		return result ? this.asRow(result) : null
 	}
 
 	async findMany(conditions: SQL[] = [], options: PaginationOptions = {}): Promise<PaginatedResult<T>> {
 		const { page = 1, limit = 10, orderBy = 'desc', orderField = 'createdAt' } = options
 
-		// Build where clause
 		const whereClause = conditions.length > 0 ? and(...conditions) : undefined
 
-		// Count total records
 		const countResult = await this.db
 			.select({ count: sql<number>`count(*)` })
 			.from(this.table)
@@ -66,14 +89,10 @@ export abstract class BaseRepository<T extends BaseEntity, TInsert = Omit<T, 'id
 		const count = countResult[0]?.count || 0
 		const totalPages = Math.ceil(count / limit)
 
-		// Build order clause
-		const field = (this.table as any)[orderField] ?? (this.table as any).id
+		const field = this.orderColumn(orderField)
 		const orderClause = orderBy === 'desc' ? desc(field) : asc(field)
-
-		// Calculate offset
 		const offset = (page - 1) * limit
 
-		// Get paginated data
 		const data = await this.db
 			.select()
 			.from(this.table)
@@ -83,7 +102,7 @@ export abstract class BaseRepository<T extends BaseEntity, TInsert = Omit<T, 'id
 			.offset(offset)
 
 		return {
-			data: data as unknown as T[],
+			data: this.asRows(data),
 			pagination: {
 				page,
 				limit,
@@ -102,16 +121,17 @@ export abstract class BaseRepository<T extends BaseEntity, TInsert = Omit<T, 'id
 				...updates,
 				updatedAt: new Date(),
 			})
-			.where(eq((this.table as any).id, id))
+			.where(eq(this.idColumn(), id))
 			.returning()
-		return result as unknown as T || null
+		return result ? this.asRow(result) : null
 	}
 
 	async deleteById(id: number): Promise<boolean> {
-		const result = await this.db
+		const rows = await this.db
 			.delete(this.table)
-			.where(eq((this.table as any).id, id))
-		return (result as any).rowCount > 0
+			.where(eq(this.idColumn(), id))
+			.returning()
+		return rows.length > 0
 	}
 
 	async count(conditions: SQL[] = []): Promise<number> {
@@ -128,27 +148,28 @@ export abstract class BaseRepository<T extends BaseEntity, TInsert = Omit<T, 'id
 		return result !== null
 	}
 
-	// Batch operations
 	async createMany(data: Omit<TInsert, 'id'>[]): Promise<T[]> {
+		if (data.length === 0) return []
 		const result = await this.db.insert(this.table).values(data).returning()
-		return result as unknown as T[]
+		return this.asRows(result)
 	}
 
 	async updateMany(conditions: SQL[], updates: Partial<T>): Promise<number> {
 		const whereClause = conditions.length > 0 ? and(...conditions) : undefined
-		const result = await this.db
+		const rows = await this.db
 			.update(this.table)
 			.set({
 				...updates,
 				updatedAt: new Date(),
 			})
 			.where(whereClause)
-		return (result as any).rowCount
+			.returning()
+		return rows.length
 	}
 
 	async deleteMany(conditions: SQL[]): Promise<number> {
 		const whereClause = conditions.length > 0 ? and(...conditions) : undefined
-		const result = await this.db.delete(this.table).where(whereClause)
-		return (result as any).rowCount
+		const rows = await this.db.delete(this.table).where(whereClause).returning()
+		return rows.length
 	}
 }

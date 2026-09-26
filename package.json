@@ -12,9 +12,12 @@
     "build:workers": "cd packages/workers && bun run build",
     "dev": "bun run dev --filter='*'",
     "watch:packages": "nodemon --watch packages/shared/src --watch packages/core/src --watch packages/workers/src --exec 'bun run build:shared && bun run build:core && bun run build:workers'",
-    "lint": "bun run lint --filter='*'",
-    "typecheck": "bun run typecheck --filter='*'",
-    "clean": "bun run clean --filter='*'"
+    "lint": "bun run --filter='@workspace/eye-web-app' lint",
+    "typecheck": "bun run --filter='@workspace/api' --filter='@workspace/shared' --filter='@workspace/core' --filter='@workspace/workers' --filter='@workspace/ui' typecheck",
+    "clean": "rm -rf apps/*/dist packages/*/dist"
+  },
+  "overrides": {
+    "ioredis": "5.11.1"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

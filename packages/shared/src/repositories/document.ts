@@ -1,5 +1,5 @@
-import { eq } from 'drizzle-orm'
-import { BaseRepository } from './base'
+import { eq, type SQL } from 'drizzle-orm'
+import { BaseRepository, type PaginationOptions } from './base'
 import { documents, processingLogs, type Document, type NewDocument, type NewProcessingLog, type ProcessingLog } from '../schemas'
 import { DocumentType } from '../validation'
 
@@ -9,7 +9,7 @@ export class DocumentRepository extends BaseRepository<Document, NewDocument> {
 	}
 
 	// Override to use createdAt as default sort field
-	override async findMany(conditions: any[] = [], options: any = {}) {
+	override async findMany(conditions: SQL[] = [], options: PaginationOptions = {}) {
 		const { orderField = 'createdAt', ...restOptions } = options
 		return super.findMany(conditions, { ...restOptions, orderField })
 	}
@@ -44,7 +44,7 @@ export class DocumentRepository extends BaseRepository<Document, NewDocument> {
 		return result as Document || null
 	}
 
-	async updateCoreference(documentId: number, coreferenceResolvedContent: Record<string, any>): Promise<Document | null> {
+	async updateCoreference(documentId: number, coreferenceResolvedContent: Record<string, string | number | boolean | null>): Promise<Document | null> {
 		return this.updateById(documentId, { coreferenceResolvedContent })
 	}
 

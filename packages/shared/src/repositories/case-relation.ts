@@ -64,6 +64,6 @@ export class CaseRelationRepository extends BaseRepository<CaseRelation, NewCase
 			.innerJoin(cases, eq(caseRelations.sourceCaseId, cases.id))
 			.where(eq(caseRelations.targetCaseId, caseId))
 
-		return [...sourceRows, ...targetRows] as any
+		return [...sourceRows, ...targetRows]
 	}
 }

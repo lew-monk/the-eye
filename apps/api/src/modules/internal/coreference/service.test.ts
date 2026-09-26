@@ -114,8 +114,8 @@ describe('CoreferenceService.storeCoreference', () => {
 		chunked: true,
 		chunk_size: 500,
 		chunk_count: 2,
-		clusters: [{ clusterIndex: 0, mentions: [] }],
-		mentions: [{ text: 'hello', startPos: 0, endPos: 5 }],
+		clusters: [['hello']],
+		mentions: [{ text: 'hello', start: 0, end: 5, cluster_id: 0 }],
 	}
 
 	beforeEach(() => {
@@ -158,8 +158,8 @@ describe('CoreferenceService.storeCoreference', () => {
 			chunked: true,
 			chunkSize: 500,
 			chunkCount: 2,
-			clusters: [{ clusterIndex: 0, mentions: [] }],
-			mentions: [{ text: 'hello', startPos: 0, endPos: 5 }],
+			clusters: [['hello']],
+			mentions: [{ text: 'hello', start: 0, end: 5, cluster_id: 0 }],
 		})
 		expect(mockDocAddProcessingLog).toHaveBeenCalledTimes(1)
 		const log = mockDocAddProcessingLog.mock.calls[0]?.[0]
@@ -185,21 +185,38 @@ describe('CoreferenceService.storeCoreference', () => {
 		const minimalBody = {
 			source_text_hash: 'hash456',
 			resolved_text: 'Minimal',
+			clusters: [] as string[][],
+			mentions: [] as { text: string; start: number; end: number; cluster_id: number }[],
+			model: '',
+			model_version: '',
+			processed_at: '',
+			processing_time_ms: 0,
+			input_char_count: 0,
 		}
 
 		const result = await CoreferenceService.storeCoreference(3, minimalBody)
 
 		expect(result).toEqual({ success: true })
 		const log = mockDocAddProcessingLog.mock.calls[0]?.[0]
-		expect(log.details.clusters).toBeUndefined()
-		expect(log.details.mentions).toBeUndefined()
+		expect(log.details.clusters).toBe(0)
+		expect(log.details.mentions).toBe(0)
 	})
 
 	it('skips hashMismatch check when document has no textHash', async () => {
 		mockDocFindById.mockResolvedValue({ id: 4, textHash: null })
 		mockCorefStore.mockResolvedValue({ id: 4 })
 
-		const result = await CoreferenceService.storeCoreference(4, { source_text_hash: 'anything', resolved_text: 'hi' })
+		const result = await CoreferenceService.storeCoreference(4, {
+			source_text_hash: 'anything',
+			resolved_text: 'hi',
+			clusters: [],
+			mentions: [],
+			model: '',
+			model_version: '',
+			processed_at: '',
+			processing_time_ms: 0,
+			input_char_count: 0,
+		})
 
 		expect(result).toEqual({ success: true })
 	})
