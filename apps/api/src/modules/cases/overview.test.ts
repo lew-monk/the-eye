@@ -82,11 +82,11 @@ describe('CasesService.getCaseChunks', () => {
 		const result = await CasesService.getCaseChunks(5)
 
 		expect(result.length).toBe(3)
-		expect(result[0].positionWeight).toBe(0.8)
-		expect(result[1].positionWeight).toBe(0.5)
-		expect(result[2].positionWeight).toBe(0.3)
-		expect(result[0].filename).toBe('doc1.pdf')
-		expect(result[2].filename).toBe('doc2.pdf')
+		expect(result[0]!.positionWeight).toBe(0.8)
+		expect(result[1]!.positionWeight).toBe(0.5)
+		expect(result[2]!.positionWeight).toBe(0.3)
+		expect(result[0]!.filename).toBe('doc1.pdf')
+		expect(result[2]!.filename).toBe('doc2.pdf')
 	})
 
 	it('filters out chunks with null positionWeight or text', async () => {
@@ -101,7 +101,7 @@ describe('CasesService.getCaseChunks', () => {
 		const result = await CasesService.getCaseChunks(1)
 
 		expect(result.length).toBe(1)
-		expect(result[0].id).toBe(1)
+		expect(result[0]!.id).toBe(1)
 	})
 
 	it('returns empty array when case has no documents', async () => {
@@ -190,9 +190,9 @@ describe('CasesService.getMentionContexts', () => {
 		const result = await CasesService.getMentionContexts(1, 120)
 
 		expect(result.length).toBe(2)
-		expect(result[0].text).toBe('John')
-		expect(result[0].context).toContain('John')
-		expect(result[1].text).toBe('John Doe')
+		expect(result[0]!.text).toBe('John')
+		expect(result[0]!.context).toContain('John')
+		expect(result[1]!.text).toBe('John Doe')
 	})
 
 	it('falls back to mention text when no fullContent', async () => {
@@ -210,8 +210,8 @@ describe('CasesService.getMentionContexts', () => {
 		const result = await CasesService.getMentionContexts(1, 120)
 
 		expect(result.length).toBe(1)
-		expect(result[0].text).toBe('Fallback')
-		expect(result[0].context).toBe('Fallback')
+		expect(result[0]!.text).toBe('Fallback')
+		expect(result[0]!.context).toBe('Fallback')
 	})
 
 	it('adds ellipsis prefix when excerpt starts after beginning and no suffix when reaching end', async () => {
@@ -226,8 +226,8 @@ describe('CasesService.getMentionContexts', () => {
 
 		const result = await CasesService.getMentionContexts(1, 50)
 
-		expect(result[0].context.startsWith('\u2026')).toBe(true)
-		expect(result[0].context.endsWith('\u2026')).toBe(false)
+		expect(result[0]!.context.startsWith('\u2026')).toBe(true)
+		expect(result[0]!.context.endsWith('\u2026')).toBe(false)
 	})
 	it('prefers resolvedText over fullContent', async () => {
 		mockParticipantFindById.mockResolvedValue(participant)
@@ -244,8 +244,8 @@ describe('CasesService.getMentionContexts', () => {
 
 		const result = await CasesService.getMentionContexts(1, 5)
 
-		expect(result[0].context).toContain('John')
-		expect(result[0].context).not.toContain('WRONG')
+		expect(result[0]!.context).toContain('John')
+		expect(result[0]!.context).not.toContain('WRONG')
 	})
 
 	it('adds ellipsis suffix when excerpt ends before text end and no prefix when starting at 0', async () => {
@@ -260,8 +260,8 @@ describe('CasesService.getMentionContexts', () => {
 
 		const result = await CasesService.getMentionContexts(1, 50)
 
-		expect(result[0].context.startsWith('\u2026')).toBe(false)
-		expect(result[0].context.endsWith('\u2026')).toBe(true)
+		expect(result[0]!.context.startsWith('\u2026')).toBe(false)
+		expect(result[0]!.context.endsWith('\u2026')).toBe(true)
 	})
 })
 
@@ -274,7 +274,10 @@ describe('CasesService.getEntityMentionContexts', () => {
 						innerJoin: () => ({
 							innerJoin: () => ({
 								where: () => ({
-									orderBy: () => Promise.resolve([]),
+									// Array carries limit helper. Query awaits directly in this test.
+									orderBy: () => Object.assign([], {
+										limit: (_n: number) => ({ offset: () => Promise.resolve([]) }),
+									}),
 								}),
 							}),
 						}),
@@ -334,13 +337,13 @@ describe('CasesService.getCaseEntities', () => {
 		const result = await CasesService.getCaseEntities(5)
 
 		expect(result).toHaveLength(1)
-		expect(result[0].normalizedName).toBe('jane-smith')
-		expect(result[0].documentCount).toBe(2)
-		expect(result[0].mentionCount).toBe(5)
-		expect(result[0].totalDocsInCase).toBe(2)
-		expect(result[0].relevanceScore).toBe(0.9)
-		expect(result[0].confidence.score).toBeGreaterThan(0)
-		expect(result[0].confidence.roleConsistency).toBe(100)
+		expect(result[0]!.normalizedName).toBe('jane-smith')
+		expect(result[0]!.documentCount).toBe(2)
+		expect(result[0]!.mentionCount).toBe(5)
+		expect(result[0]!.totalDocsInCase).toBe(2)
+		expect(result[0]!.relevanceScore).toBe(0.9)
+		expect(result[0]!.confidence.score).toBeGreaterThan(0)
+		expect(result[0]!.confidence.roleConsistency).toBe(100)
 	})
 
 	it('returns empty array when case has no documents', async () => {

@@ -50,6 +50,7 @@ export abstract class CaseIntelligenceService {
 				.sort((a, b) => b.count - a.count)
 
 			const primary = roles[0]
+			if (!primary) continue
 			const outliers = roles.slice(1)
 			flags.push({
 				normalizedName,
@@ -120,10 +121,11 @@ export abstract class CaseIntelligenceService {
 		points: { mentionCount: number }[],
 	): { trend: 'surge' | 'drop' | 'stable' | 'single'; label: string; delta: number } {
 		if (points.length < 2) return { trend: 'single', label: 'FIRST_SEEN', delta: 0 }
-		const first = points[0].mentionCount
-		const last = points[points.length - 1].mentionCount
-		const delta = last - first
-		const base = Math.max(first, 1)
+		const first = points[0]
+		const last = points[points.length - 1]
+		if (!first || !last) return { trend: 'single', label: 'FIRST_SEEN', delta: 0 }
+		const delta = last.mentionCount - first.mentionCount
+		const base = Math.max(first.mentionCount, 1)
 		const pct = Math.round((delta / base) * 100)
 		if (delta >= Math.max(2, Math.ceil(base * 0.25))) {
 			return { trend: 'surge', label: pct > 0 ? `SURGE +${pct}%` : 'SURGE', delta }

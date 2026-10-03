@@ -5,7 +5,6 @@ import type {
 	ChunkData,
 	CaseChunkData,
 	EntitySearchResult,
-	EntityConfidence,
 	EntityTrajectory,
 	ChronologyEvent,
 } from "#/integrations/trpc/routers/cases";
@@ -268,10 +267,12 @@ export function ParticipantRow({
 
 	return (
 		<div className={className}>
-			<div
+			<button
+				type="button"
+				aria-expanded={expanded}
 				className={`${
 					compact ? "bracket-bottom-right-compact" : "bracket-bottom-right-only"
-				} ${compact ? "px-3 py-2" : "px-5 py-3"} cursor-pointer`}
+				} ${compact ? "px-3 py-2" : "px-5 py-3"} cursor-pointer block w-full text-left`}
 				onClick={() => setExpanded(!expanded)}
 			>
 				<div className="flex items-start gap-3 relative">
@@ -322,7 +323,7 @@ export function ParticipantRow({
 						</span>
 					</div>
 				</div>
-			</div>
+			</button>
 
 			{expanded && (
 				<div className="border-t border-outline-variant/10">
@@ -380,6 +381,7 @@ export function ParticipantRow({
 						const isActive = activeMentionIdx === i;
 						return (
 							<div
+								// biome-ignore lint/suspicious/noArrayIndexKey: mentions are static per participant; index aligns with activeMentionIdx and doc mapping
 								key={`${participant.id}-mention-${i}`}
 								className={`${
 									compact ? "px-3 py-1.5 pl-6" : "px-5 py-2 pl-8"
@@ -495,8 +497,10 @@ export function DocumentChunks({ documentId, density = "standard" }: DocumentChu
 
 	return (
 		<div>
-			<div
-				className={`${
+			<button
+				type="button"
+				aria-expanded={expanded}
+				className={`w-full text-left ${
 					compact ? "px-3 py-1.5" : "px-5 py-2"
 				} border-t border-outline-variant/10 cursor-pointer flex items-center justify-between`}
 				onClick={() => setExpanded(!expanded)}
@@ -516,7 +520,7 @@ export function DocumentChunks({ documentId, density = "standard" }: DocumentChu
 				>
 					▾
 				</span>
-			</div>
+			</button>
 
 			{expanded && (
 				<div className="border-t border-outline-variant/10">
@@ -554,10 +558,10 @@ const REDACTION_TAG_RE = /\[([A-Z][A-Z_]+)\]/g;
 function renderChunkWithTags(text: string): React.ReactNode[] {
 	const parts: React.ReactNode[] = [];
 	let lastIndex = 0;
-	let match: RegExpExecArray | null;
 
 	REDACTION_TAG_RE.lastIndex = 0;
-	while ((match = REDACTION_TAG_RE.exec(text)) !== null) {
+	let match: RegExpExecArray | null = REDACTION_TAG_RE.exec(text);
+	while (match !== null) {
 		if (match.index > lastIndex) {
 			parts.push(text.slice(lastIndex, match.index));
 		}
@@ -570,6 +574,7 @@ function renderChunkWithTags(text: string): React.ReactNode[] {
 			</span>,
 		);
 		lastIndex = match.index + match[0].length;
+		match = REDACTION_TAG_RE.exec(text);
 	}
 	if (lastIndex < text.length) {
 		parts.push(text.slice(lastIndex));
@@ -603,8 +608,10 @@ function ChunkExcerpt({
 	const isDashList = hasDashClauses(excerpt);
 
 	return (
-		<div
-			className={`${
+		<button
+			type="button"
+			aria-expanded={open}
+			className={`block w-full text-left ${
 				compact ? "px-3 py-2" : "px-5 py-3"
 			} border-b border-outline-variant/10 last:border-b-0 cursor-pointer`}
 			onClick={() => setOpen(!open)}
@@ -638,6 +645,7 @@ function ChunkExcerpt({
 					}`}
 				>
 					{excerpt.split(/\s*[—–-]\s+/).filter(Boolean).map((clause, ci) => (
+						// biome-ignore lint/suspicious/noArrayIndexKey: dash clauses are static text fragments with no stable ids; order never changes
 						<li key={ci} className="flex items-start gap-2">
 							<span className="text-outline/40 mt-0.5 shrink-0">—</span>
 							<span>{clause}</span>
@@ -651,7 +659,7 @@ function ChunkExcerpt({
 					{hasMore && <span className="text-outline">…</span>}
 				</p>
 			)}
-		</div>
+		</button>
 	);
 }
 
@@ -801,10 +809,14 @@ export function AddParticipantDialog({
 				)}
 
 				<div>
-					<label className="font-mono text-body uppercase tracking-[0.12em] text-on-surface-variant block mb-1.5">
+					<label
+						htmlFor="add-participant-name"
+						className="font-mono text-body uppercase tracking-[0.12em] text-on-surface-variant block mb-1.5"
+					>
 						NAME
 					</label>
 					<input
+						id="add-participant-name"
 						type="text"
 						value={name}
 						onChange={(e) => setName(e.target.value)}
@@ -814,10 +826,14 @@ export function AddParticipantDialog({
 				</div>
 
 				<div>
-					<label className="font-mono text-body uppercase tracking-[0.12em] text-on-surface-variant block mb-1.5">
+					<label
+						htmlFor="add-participant-role"
+						className="font-mono text-body uppercase tracking-[0.12em] text-on-surface-variant block mb-1.5"
+					>
 						ROLE
 					</label>
 					<select
+						id="add-participant-role"
 						className="w-full bg-surface border border-outline text-foreground font-mono text-body px-3 py-2 focus:outline-none focus:border-primary/50 transition-colors"
 						value={role}
 						onChange={(e) => setRole(e.target.value)}
@@ -832,10 +848,14 @@ export function AddParticipantDialog({
 
 				{documents.length > 1 && (
 					<div>
-						<label className="font-mono text-body uppercase tracking-[0.12em] text-on-surface-variant block mb-1.5">
+						<label
+							htmlFor="add-participant-document"
+							className="font-mono text-body uppercase tracking-[0.12em] text-on-surface-variant block mb-1.5"
+						>
 							DOCUMENT
 						</label>
 						<select
+							id="add-participant-document"
 							className="w-full bg-surface border border-outline text-foreground font-mono text-body px-3 py-2 focus:outline-none focus:border-primary/50 transition-colors"
 							value={documentId === "" ? "" : String(documentId)}
 							onChange={(e) =>
@@ -985,16 +1005,22 @@ export function EntitySearchDialog({ open, onOpenChange }: EntitySearchDialogPro
 		>
 			<div className="space-y-4">
 				<div>
-					<label className="font-mono text-body uppercase tracking-[0.12em] text-on-surface-variant block mb-1.5">
+					<label
+						htmlFor="entity-search-input"
+						className="font-mono text-body uppercase tracking-[0.12em] text-on-surface-variant block mb-1.5"
+					>
 						SEARCH_ENTITIES
 					</label>
 					<input
+						id="entity-search-input"
 						type="text"
 						value={query}
 						onChange={(e) => handleChange(e.target.value)}
 						className="w-full bg-surface border border-outline text-foreground font-mono text-body px-3 py-2 focus:outline-none focus:border-primary/50 transition-colors"
 						placeholder="Search by name..."
-						autoFocus
+						ref={(el) => {
+							el?.focus();
+						}}
 					/>
 				</div>
 
@@ -1164,6 +1190,7 @@ function TrajectorySparkline({
 
 	return (
 		<svg width={w} height={h} className="shrink-0" viewBox={`0 0 ${w} ${h}`}>
+			<title>Entity mention trajectory</title>
 			<defs>
 				<linearGradient id={`sp-${id}`} x1="0" y1="0" x2="0" y2="1">
 					<stop offset="0%" stopColor="var(--primary)" stopOpacity="0.18" />
@@ -1214,7 +1241,12 @@ function SortDropdown({
 
 			{open && (
 				<>
-					<div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+					<button
+						type="button"
+						aria-label="Close sort options"
+						className="fixed inset-0 z-40 cursor-default"
+						onClick={() => setOpen(false)}
+					/>
 					<div className="absolute right-0 top-full mt-1 z-50 border border-outline-variant/30 bg-surface-container-high bracket-top-left bracket-bottom-right min-w-[140px]">
 						{options.map((opt) => (
 							<button
@@ -1255,8 +1287,10 @@ function EntityTrajectoryRow({
 
 	return (
 		<div>
-			<div
-				className="px-5 py-3 cursor-pointer select-none"
+			<button
+				type="button"
+				aria-expanded={expanded}
+				className="block w-full text-left px-5 py-3 cursor-pointer select-none"
 				onClick={() => setExpanded(!expanded)}
 			>
 				<div className="flex items-start gap-3">
@@ -1312,7 +1346,7 @@ function EntityTrajectoryRow({
 						</span>
 					</div>
 				</div>
-			</div>
+			</button>
 
 			{expanded && (
 				<div className="border-t border-outline-variant/10 px-5 py-4">

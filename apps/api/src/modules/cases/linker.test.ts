@@ -44,10 +44,10 @@ describe('extractDatedEvents', () => {
 			'Judgment was delivered on 20 June 2023.'
 		const events = extractDatedEvents(text)
 		expect(events.map((e) => e.date)).toEqual(['2023-01-12', '2023-01-13', '2023-06-20'])
-		expect(events[0].kind).toBe('incident')
-		expect(events[1].kind).toBe('arrest')
-		expect(events[2].kind).toBe('judgment')
-		expect(events[0].quote.toLowerCase()).toContain('occurred')
+		expect(events[0]!.kind).toBe('incident')
+		expect(events[1]!.kind).toBe('arrest')
+		expect(events[2]!.kind).toBe('judgment')
+		expect(events[0]!.quote.toLowerCase()).toContain('occurred')
 	})
 
 	it('returns empty for text with no dates', () => {
@@ -129,7 +129,7 @@ describe('entitiesNearEvent', () => {
 			'The informant Jane Wanjiku said the incident occurred on 12 January 2023.'
 		const events = extractDatedEvents(text)
 		const links = linkReferences(text, [jane, kamau])
-		const near = entitiesNearEvent(events[0], [jane, kamau], links)
+		const near = entitiesNearEvent(events[0]!, [jane, kamau], links)
 		expect(near.map((p) => p.normalizedName)).toContain('jane wanjiku')
 	})
 })

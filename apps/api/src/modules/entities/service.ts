@@ -3,8 +3,10 @@ import { participants, documents } from '@workspace/shared'
 import { eq, sql } from 'drizzle-orm'
 import { participantRepository, documentRepository, coreferenceRepository } from '@workspace/shared'
 import type {
+	CoOccurrenceEdge,
 	CoOccurring,
 	CoOccurrenceNetwork,
+	CoOccurrenceNode,
 	ConfidenceResult,
 	EntityAppearance,
 	EntityDossier,

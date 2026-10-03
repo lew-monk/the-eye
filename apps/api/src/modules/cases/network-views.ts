@@ -368,12 +368,14 @@ export abstract class CaseNetworkViews {
 		const kept = ranked.slice(0, entityCap)
 
 		for (const [normalizedName, list] of kept) {
+			const head = list[0]
+			if (!head) continue
 			const entityId = `entity:${normalizedName}`
 			const mentions = list.reduce((s, r) => s + r.mentionCount, 0)
 			pushNode(nodes, {
 				id: entityId,
 				kind: 'entity',
-				label: list[0].name,
+				label: head.name,
 				sublabel: role.replace(/_/g, ' '),
 				role,
 				normalizedName,

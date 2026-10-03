@@ -118,18 +118,22 @@ export abstract class ChronologyService {
 		const iso = s.match(ISO_DATE_RE)
 		if (iso) {
 			const [, y, m, d] = iso
+			if (!y || !m || !d) return null
 			return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
 		}
 
 		const us = s.match(US_DATE_RE)
 		if (us) {
 			const [, m, d, y] = us
+			if (!y || !m || !d) return null
 			return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
 		}
 
 		const long = s.match(LONG_DATE_RE)
 		if (long) {
-			const d = new Date(long[1])
+			const rawLong = long[1]
+			if (!rawLong) return null
+			const d = new Date(rawLong)
 			if (!Number.isNaN(d.getTime())) {
 				return d.toISOString().slice(0, 10)
 			}

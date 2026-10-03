@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'bun:test'
-import { TypeCompiler } from 'elysia/type-system'
+import { getSchemaValidator } from 'elysia'
 import { ChunkModel } from './model'
 
-const check = TypeCompiler.Compile(ChunkModel.body)
+// Use public entry point. It exposes the same check behavior.
+const check = getSchemaValidator(ChunkModel.body)
 
 const baseBody = {
 	chunks: [{ chunkIndex: 0, text: 'hello' }],

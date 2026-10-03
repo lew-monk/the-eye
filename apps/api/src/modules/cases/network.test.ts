@@ -306,10 +306,10 @@ describe('CasesService.getRoleVarianceFlags', () => {
 		const result = await CasesService.getRoleVarianceFlags(1)
 
 		expect(result).toHaveLength(1)
-		expect(result[0].normalizedName).toBe('jane')
-		expect(result[0].primaryRole).toBe('witness')
-		expect(result[0].roles).toHaveLength(2)
-		expect(result[0].flag).toContain('defendant')
+		expect(result[0]!.normalizedName).toBe('jane')
+		expect(result[0]!.primaryRole).toBe('witness')
+		expect(result[0]!.roles).toHaveLength(2)
+		expect(result[0]!.flag).toContain('defendant')
 	})
 
 	it('returns empty when all roles are consistent', async () => {
@@ -359,11 +359,11 @@ describe('CasesService.getEntityTrajectories', () => {
 		const result = await CasesService.getEntityTrajectories(1)
 
 		expect(result).toHaveLength(1)
-		expect(result[0].normalizedName).toBe('alice')
-		expect(result[0].points).toHaveLength(2)
-		expect(result[0].points[0].documentId).toBe(1)
-		expect(result[0].points[0].mentionCount).toBe(2)
-		expect(result[0].points[1].mentionCount).toBe(8)
+		expect(result[0]!.normalizedName).toBe('alice')
+		expect(result[0]!.points).toHaveLength(2)
+		expect(result[0]!.points[0]!.documentId).toBe(1)
+		expect(result[0]!.points[0]!.mentionCount).toBe(2)
+		expect(result[0]!.points[1]!.mentionCount).toBe(8)
 	})
 })
 

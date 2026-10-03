@@ -140,24 +140,25 @@ function SystemTelemetry() {
 	);
 }
 
+const LIVE_LOG_LINES = [
+	"> HANDSHAKE_REQUEST_SENT",
+	"> ENCRYPTING_SESSION...",
+	"> TLS_1.3_NEGOTIATED",
+	"> AUTH_TOKEN_VALIDATED",
+	"> SECURE_CHANNEL_OPEN",
+	"> SCANNING_ENTITIES...",
+	"> CROSS_REFERENCING_DOCS",
+	"> HUD_RENDER_COMPLETE",
+];
+
 function LiveLog() {
-	const lines = [
-		"> HANDSHAKE_REQUEST_SENT",
-		"> ENCRYPTING_SESSION...",
-		"> TLS_1.3_NEGOTIATED",
-		"> AUTH_TOKEN_VALIDATED",
-		"> SECURE_CHANNEL_OPEN",
-		"> SCANNING_ENTITIES...",
-		"> CROSS_REFERENCING_DOCS",
-		"> HUD_RENDER_COMPLETE",
-	];
-	const [visible, setVisible] = useState<string[]>(lines.slice(0, 4));
+	const [visible, setVisible] = useState<string[]>(LIVE_LOG_LINES.slice(0, 4));
 
 	useEffect(() => {
 		const interval = setInterval(
 			() => {
 				setVisible((prev) => {
-					const next = [...prev, lines[prev.length % lines.length]];
+					const next = [...prev, LIVE_LOG_LINES[prev.length % LIVE_LOG_LINES.length]];
 					if (next.length > 6) next.shift();
 					return next;
 				});
@@ -171,6 +172,7 @@ function LiveLog() {
 		<div className="space-y-1 thin-scrollbar max-h-24 overflow-y-auto">
 			{visible.map((line, i) => (
 				<div
+					// biome-ignore lint/suspicious/noArrayIndexKey: cycling decorative log window with no stable ids; order is append-only
 					key={i}
 					className="font-mono text-body text-outline transition-opacity duration-500"
 				>

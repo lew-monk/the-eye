@@ -141,12 +141,12 @@ describe('CasesService.getDocumentChronology', () => {
 
 		expect(result.events).toHaveLength(2)
 		expect(result.totalDates).toBe(2)
-		expect(result.events[0].documentId).toBe(1)
-		expect(result.events[0].date).toBe('2023-01-15')
-		expect(result.events[0].kind).toBe('document')
-		expect(result.events[1].documentId).toBe(2)
-		expect(result.events[1].date).toBe('2023-06-20')
-		expect(result.events[0].entities[0].normalizedName).toBe('jane')
+		expect(result.events[0]!.documentId).toBe(1)
+		expect(result.events[0]!.date).toBe('2023-01-15')
+		expect(result.events[0]!.kind).toBe('document')
+		expect(result.events[1]!.documentId).toBe(2)
+		expect(result.events[1]!.date).toBe('2023-06-20')
+		expect(result.events[0]!.entities[0]!.normalizedName).toBe('jane')
 	})
 
 	it('returns only the most recent N dates when maxDates is set', async () => {
@@ -204,12 +204,12 @@ describe('CasesService.getDocumentChronology', () => {
 		const result = await CasesService.getDocumentChronology(1)
 
 		expect(result.events.length).toBeGreaterThanOrEqual(1)
-		expect(result.events[0].date).toBe('2023-01-12')
-		expect(result.events[0].dateSource).toBe('document_text')
-		expect(result.events[0].kind).toBe('incident')
-		expect(result.events[0].quote?.toLowerCase()).toContain('occurred')
-		expect(result.events[0].entities.some((e) => e.normalizedName === 'jane wanjiku')).toBe(true)
-		expect(result.events[0].unresolvedRefs.some((r) => r.includes('third party'))).toBe(true)
+		expect(result.events[0]!.date).toBe('2023-01-12')
+		expect(result.events[0]!.dateSource).toBe('document_text')
+		expect(result.events[0]!.kind).toBe('incident')
+		expect(result.events[0]!.quote?.toLowerCase()).toContain('occurred')
+		expect(result.events[0]!.entities.some((e) => e.normalizedName === 'jane wanjiku')).toBe(true)
+		expect(result.events[0]!.unresolvedRefs.some((r) => r.includes('third party'))).toBe(true)
 	})
 
 	it('skips documents with no extractable date', async () => {
@@ -254,8 +254,8 @@ describe('CasesService.getDocumentGraph', () => {
 		expect(result.nodes.every((n) => Array.isArray(n.dates))).toBe(true)
 		const explicit = result.edges.filter((e) => e.relationType === 'explicit_reference')
 		expect(explicit.length).toBeGreaterThanOrEqual(1)
-		expect(explicit[0].sourceDocumentId).toBe(2)
-		expect(explicit[0].targetDocumentId).toBe(1)
+		expect(explicit[0]!.sourceDocumentId).toBe(2)
+		expect(explicit[0]!.targetDocumentId).toBe(1)
 	})
 
 	it('adds implicit subset edges by document type hierarchy', async () => {

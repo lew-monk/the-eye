@@ -47,6 +47,7 @@ function LiveLog() {
       <div className="space-y-1 thin-scrollbar max-h-32 overflow-y-auto">
         {lines.map((line, i) => (
           <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: LOG_LINES is a static decorative feed with no stable ids; order is append-only
             key={i}
             className="font-mono text-[11px] text-outline font-medium animate-in fade-in duration-300"
           >

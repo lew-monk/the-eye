@@ -58,7 +58,8 @@ export abstract class GraphService {
 					const nTokens = new Set(normalized.split(' ').filter(Boolean))
 					const cTokens = cand.split(' ').filter(Boolean)
 					const overlap = cTokens.filter((t) => nTokens.has(t)).length
-					if (overlap >= 2 || (overlap === 1 && cTokens.length === 1 && cTokens[0].length > 4)) {
+					const single = cTokens.length === 1 ? cTokens[0] : undefined
+					if (overlap >= 2 || (overlap === 1 && single != null && single.length > 4)) {
 						const score = overlap / Math.max(cTokens.length, 1)
 						if (!best || score > best.score) best = { id: doc.id, score }
 					}
@@ -156,6 +157,7 @@ export abstract class GraphService {
 		for (let i = 0; i < sortedByType.length - 1; i++) {
 			const a = sortedByType[i]
 			const b = sortedByType[i + 1]
+			if (!a || !b) continue
 			const ra = typeRank[a.documentType]
 			const rb = typeRank[b.documentType]
 			if (ra != null && rb != null && ra < rb) {

@@ -137,10 +137,14 @@ function UploadDocumentDialog({
 				)}
 
 				<div>
-					<label className="font-mono text-body uppercase tracking-[0.12em] text-on-surface-variant block mb-1.5">
+					<label
+						htmlFor="upload-file-input"
+						className="font-mono text-body uppercase tracking-[0.12em] text-on-surface-variant block mb-1.5"
+					>
 						FILE
 					</label>
 					<input
+						id="upload-file-input"
 						ref={fileRef}
 						type="file"
 						accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif,.bmp"
@@ -149,10 +153,14 @@ function UploadDocumentDialog({
 				</div>
 
 				<div>
-					<label className="font-mono text-body uppercase tracking-[0.12em] text-on-surface-variant block mb-1.5">
+					<label
+						htmlFor="upload-doc-type"
+						className="font-mono text-body uppercase tracking-[0.12em] text-on-surface-variant block mb-1.5"
+					>
 						DOCUMENT_TYPE
 					</label>
 					<select
+						id="upload-doc-type"
 						className="w-full bg-surface border border-outline text-foreground font-mono text-body px-3 py-2 focus:outline-none focus:border-primary/50 transition-colors"
 						value={docType}
 						onChange={(e) => setDocType(e.target.value)}
@@ -688,9 +696,9 @@ function CaseDetail() {
 										/>
 									) : (
 										<div className="divide-y divide-outline-variant/10">
-											{caseRelations.map((cr: CaseRelationData, i: number) => (
+											{caseRelations.map((cr: CaseRelationData) => (
 												<Link
-													key={`${cr.case.id}-${i}`}
+													key={`${cr.case.id}-${cr.relationType}-${cr.entityName ?? ""}`}
 													to="/cases/$caseId"
 													params={{ caseId: String(cr.case.id) }}
 													className="flex items-center justify-between px-5 py-3 hover:bg-surface/50 transition-colors block"
@@ -782,7 +790,7 @@ function CaseDetail() {
 															)}
 														</div>
 													))}
-													{(docGraph as DocumentGraphData).edges.map((edge, i) => {
+													{(docGraph as DocumentGraphData).edges.map((edge) => {
 														const src = docGraph.nodes.find(
 															(n) => n.documentId === edge.sourceDocumentId,
 														);
@@ -790,7 +798,7 @@ function CaseDetail() {
 															(n) => n.documentId === edge.targetDocumentId,
 														);
 														return (
-															<div key={`e-${i}`} className="px-5 py-3">
+															<div key={`e-${edge.sourceDocumentId}-${edge.targetDocumentId}-${edge.relationType}`} className="px-5 py-3">
 																<div className="flex items-center gap-2 flex-wrap">
 																	<span className="font-mono text-body text-on-surface">
 																		{src?.filename ?? edge.sourceDocumentId}

@@ -517,12 +517,12 @@ function NetworkPage() {
 									<div className="font-mono text-meta uppercase tracking-[0.12em] text-outline">
 										WHY THIS CONNECTION
 									</div>
-									{mentionContexts.slice(0, 5).map((m, i) => {
+									{mentionContexts.slice(0, 5).map((m) => {
 										const raw = (m.context || m.text || "").replace(/\s+/g, " ").trim();
 										const excerpt =
 											raw.length > 280 ? `${raw.slice(0, 280).trim()}…` : raw;
 										return (
-											<div key={`${m.start}-${i}`}>
+											<div key={`${m.documentId ?? m.filename ?? "ctx"}-${m.start}-${m.end}`}>
 												{m.filename && (
 													<div className="font-mono text-meta text-outline truncate mb-1">
 														{m.filename}
@@ -643,7 +643,6 @@ function InspectorPanel({
 	activeCase,
 	relations,
 	neighbors,
-	graphNodeIds,
 	expanding,
 	onEnter,
 	onExpand,

@@ -107,6 +107,7 @@ export function parseDateToken(raw: string): string | null {
 	const iso = s.match(/\b(20\d{2}|19\d{2})[-/](0[1-9]|1[0-2])[-/](0[1-9]|[12]\d|3[01])\b/)
 	if (iso) {
 		const [, y, m, d] = iso
+		if (!y || !m || !d) return null
 		return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
 	}
 
@@ -115,6 +116,7 @@ export function parseDateToken(raw: string): string | null {
 		const a = Number(slash[1])
 		const b = Number(slash[2])
 		const y = slash[3]
+		if (!y) return null
 		// Legal filings in this system use D/M/Y order. A first number above 12 is a day.
 		const dayFirst = a > 12 || b <= 12
 		const day = dayFirst ? a : b
@@ -330,7 +332,8 @@ function findByUniqueRoleHead(
 		const heads = ROLE_HEADS[(p.role || '').toLowerCase()] ?? [p.role]
 		if (heads.some((h) => tokens.has(h))) matches.push(p)
 	}
-	return matches.length === 1 ? matches[0] : null
+	if (matches.length !== 1) return null
+	return matches[0] ?? null
 }
 
 function findNearbyParticipant(

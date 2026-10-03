@@ -75,7 +75,7 @@ function MentionContextDoc({
 			</div>
 			<div className="space-y-3">
 				{mc.mentions.slice(0, 3).map((m, i) => (
-					<div key={i} className="border border-primary/15 bg-primary/[0.03]">
+					<div key={`${m.start}-${m.end}`} className="border border-primary/15 bg-primary/[0.03]">
 						<div className="flex items-center justify-between px-3 py-1.5 border-b border-primary/10 bg-primary/[0.04]">
 							<span className="font-mono text-meta uppercase tracking-[0.12em] text-outline">
 								MENTION_{i + 1}
@@ -144,7 +144,7 @@ function MentionContextDoc({
 			>
 				<div className="divide-y divide-outline-variant/10">
 					{mc.mentions.map((m, i) => (
-						<div key={i} className="p-4">
+						<div key={`${m.start}-${m.end}`} className="p-4">
 							<div className="flex items-center justify-between mb-2">
 								<span className="font-mono text-meta uppercase tracking-[0.12em] text-outline">
 									MENTION_{i + 1}
@@ -198,6 +198,7 @@ function EntityDetail() {
 		<AppShell>
 			<div className="p-4 lg:p-6 max-w-[1400px] mx-auto space-y-4">
 			<button
+				type="button"
 				onClick={() => window.history.back()}
 				className="inline-flex items-center gap-1.5 font-mono text-body uppercase tracking-wider text-on-surface-variant hover:text-primary transition-colors"
 			>
@@ -238,9 +239,9 @@ function EntityDetail() {
 												new Set(
 													dossier.mentionContexts.flatMap((mc) => mc.allMentions),
 												),
-											).map((m, i) => (
+											).map((m) => (
 												<code
-													key={i}
+													key={m}
 													className="font-mono text-meta-sm text-on-surface bg-primary/[0.08] px-1.5 py-0.5"
 												>
 													{m}
@@ -374,9 +375,9 @@ function EntityDetail() {
 												INTELLIGENCE_FLAGS
 											</span>
 											<div className="space-y-1">
-												{dossier.confidence.flags.map((flag, i) => (
+												{dossier.confidence.flags.map((flag) => (
 													<div
-														key={i}
+														key={flag}
 														className="flex items-center gap-2 px-3 py-2 border border-warning/20 bg-warning/5"
 													>
 														<StatusDot variant="warning" size="sm" />
@@ -521,9 +522,9 @@ function EntityDetail() {
 											</div>
 										</div>
 										<div className="divide-y divide-outline-variant/10">
-											{dossier.coOccurringEntities.map((co, idx) => (
+											{dossier.coOccurringEntities.map((co) => (
 												<Link
-													key={idx}
+													key={co.normalizedName}
 													to="/entities/$entityName"
 													params={{
 														entityName: encodeURIComponent(co.normalizedName),
