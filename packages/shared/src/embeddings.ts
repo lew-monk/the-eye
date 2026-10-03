@@ -1,24 +1,24 @@
 /**
- * pgvector requires a fixed column typmod (`vector(N)`). Rows therefore live
- * in a wide column (`EMBEDDING_COLUMN_DIMENSIONS`) even when the active model
- * emits fewer dimensions.
+ * pgvector uses a fixed column width (`vector(N)`).
+ * The column width is `EMBEDDING_COLUMN_DIMENSIONS`.
+ * The active model can emit fewer dimensions.
+ * The system pads short vectors with zeros to fill the column.
  *
- * Zero-padding a native vector v to [v, 0, 0, …] does **not** change cosine
- * similarity between two vectors from the **same** model:
+ * Zero padding does not change cosine similarity for one model.
+ * Example: cos([a, 0], [b, 0]) = cos(a, b).
  *
- *   cos([a, 0], [b, 0]) = (a·b) / (|a||b|) = cos(a, b)
+ * Do not mix models in one `<=>` search.
+ * Example: 768-d nomic with 1536-d OpenAI gives invalid scores.
+ * Different models use different vector spaces.
+ * Do not truncate long vectors to fit the column.
  *
- * What *does* poison retrieval is mixing models in one `<=>` scan (e.g. 768-d
- * nomic next to 1536-d OpenAI). Different spaces, incomparable scores.
- * Truncating a longer vector to fit the column is also invalid.
- *
- * Write path: assert native width for the declared model, then pad to column.
- * Query path: pad the query the same way and filter `embedding_model`.
+ * Write path: Check native width for the model. Then pad to column width.
+ * Query path: Pad the query in the same way. Then filter by `embedding_model`.
  */
 
 export const EMBEDDING_COLUMN_DIMENSIONS = 3072
 
-/** Native output width of models we actually run. Unknown models must pass dims explicitly. */
+/** Native output width of models in use. Pass dims explicitly for unknown models. */
 export const NATIVE_EMBEDDING_DIMENSIONS: Record<string, number> = {
 	'nomic-embed-text': 768,
 	'nomic-embed-text-v1.5': 768,
@@ -55,25 +55,25 @@ export function assertNativeEmbedding(
 	const expected = nativeDimensionForModel(model, fallbackNativeDim)
 	if (values.length !== expected) {
 		throw new EmbeddingDimensionError(
-			`Model ${model} emits ${expected}-d vectors; received ${values.length}. ` +
-				`Refusing to pad/truncate a mismatched native width (mixed-model or bad provider response).`,
+			`Model ${model} emits ${expected} values. Received ${values.length} values. ` +
+				`System rejects mismatched width. Check model name and provider response.`,
 		)
 	}
 	if (expected > EMBEDDING_COLUMN_DIMENSIONS) {
 		throw new EmbeddingDimensionError(
-			`Model ${model} native width ${expected} exceeds pgvector column ${EMBEDDING_COLUMN_DIMENSIONS}. ` +
-				`Add a new column (blue/green) instead of truncating.`,
+			`Model ${model} needs width ${expected}. Column width is ${EMBEDDING_COLUMN_DIMENSIONS}. ` +
+				`Add a new column. Do not truncate.`,
 		)
 	}
 	return expected
 }
 
-/** Pad trailing zeros so pgvector accepts the value. Never truncates. */
+/** Pad with trailing zeros for pgvector. System never truncates. */
 export function toColumnVector(values: number[], columnDim = EMBEDDING_COLUMN_DIMENSIONS): number[] {
 	if (values.length === columnDim) return values
 	if (values.length > columnDim) {
 		throw new EmbeddingDimensionError(
-			`Cannot store ${values.length}-d vector in vector(${columnDim}); would truncate.`,
+			`Cannot store ${values.length} values in vector(${columnDim}). This operation truncates data.`,
 		)
 	}
 	const out = new Array(columnDim)

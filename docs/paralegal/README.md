@@ -5,6 +5,7 @@
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Participants, coref, bag-of-chunks similar-cases, schema |
 | [UI.md](./UI.md) | Case / graph / re-process UI |
 | [pdf-pipeline.md](./pdf-pipeline.md) | **Locked** PDF extract: PyMuPDF4LLM + Azure `ocr_function` |
+| [pdf-extract-python.md](./pdf-extract-python.md) | Implementation notes: Python is not required for pdf-lib/Azure OCR |
 | [rag.md](./rag.md) | Hybrid search, eval, ingest (overlap, metadata, contextual prefix, side-cards) |
 | [eval/golden.schema.json](./eval/golden.schema.json) | Contract for labeled queries (`chunk_uid` when evals land) |
 | [eval/golden.example.json](./eval/golden.example.json) | Synthetic example — real gold stays off-git |

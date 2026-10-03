@@ -216,6 +216,7 @@ function NewCaseDialog({
 
 const NAV_ITEMS = [
 	{ label: "DASHBOARD", to: "/" },
+	{ label: "INGEST", to: "/ingestion" },
 	{ label: "INTELLIGENCE", to: "#" },
 	{ label: "NETWORK", to: "/network" },
 	{ label: "ARCHIVE", to: "#" },

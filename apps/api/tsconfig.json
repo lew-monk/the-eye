@@ -10,6 +10,7 @@
       "@workspace/shared": ["../../packages/shared/src"],
       "@workspace/core": ["../../packages/core/src"],
       "@workspace/workers": ["../../packages/workers/src"],
+      "@workspace/ingestion": ["../../packages/ingestion/src"],
       "drizzle-orm": ["../../packages/shared/node_modules/drizzle-orm"],
       "drizzle-orm/*": ["../../packages/shared/node_modules/drizzle-orm/*"]
     }

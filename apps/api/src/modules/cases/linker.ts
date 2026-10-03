@@ -62,7 +62,7 @@ const KIND_WINDOW = 48
 const LINK_WINDOW_BEFORE = 36
 const LINK_WINDOW_AFTER = 72
 
-/** Document-structure nouns — not people. Closed on purpose; everything else can be a candidate. */
+/** List of document-structure nouns. These nouns never name a person. The list is closed. */
 const STRUCTURE_HEADS = new Set([
 	'court', 'case', 'law', 'act', 'section', 'article', 'evidence', 'record',
 	'file', 'document', 'application', 'matter', 'suit', 'appeal', 'proceedings',
@@ -74,7 +74,7 @@ const STRUCTURE_HEADS = new Set([
 	'attention', 'view', 'opinion', 'submission', 'argument',
 ])
 
-/** Role vocabulary (types), not surface phrases. Used only when a role is unique in the document. */
+/** Role names (types), not surface phrases. Use only when the role occurs once in the document. */
 const ROLE_HEADS: Record<string, string[]> = {
 	defendant: ['defendant', 'accused', 'respondent'],
 	plaintiff: ['plaintiff', 'complainant', 'petitioner', 'appellant'],
@@ -85,8 +85,8 @@ const ROLE_HEADS: Record<string, string[]> = {
 	prosecutor: ['prosecutor', 'prosecution'],
 }
 
-// Determiner + optional ordinal + first word (any case) + only lowercase
-// continuations so "the informant Jane" does not swallow the proper name.
+// Match determiner + optional ordinal + first word + lowercase continuations.
+// Example: "the informant Jane" does not include the proper name.
 const DEFINITE_NP_RE =
 	/\b((?:the|a|an)\s+(?:(?:\d+(?:st|nd|rd|th)|first|second|third|fourth|fifth|said|learned|above-named|aforementioned)\s+)?[A-Za-z][A-Za-z'-]*(?:\s+[a-z][A-Za-z'-]*){0,3})\b/gi
 
@@ -115,7 +115,7 @@ export function parseDateToken(raw: string): string | null {
 		const a = Number(slash[1])
 		const b = Number(slash[2])
 		const y = slash[3]
-		// Legal filings here are typically D/M/Y. If the first number is >12 it must be day.
+		// Legal filings in this system use D/M/Y order. A first number above 12 is a day.
 		const dayFirst = a > 12 || b <= 12
 		const day = dayFirst ? a : b
 		const month = dayFirst ? b : a
@@ -278,7 +278,7 @@ function collectMatches(text: string, re: RegExp): ReferenceCandidate[] {
 	return out
 }
 
-/** Open-vocabulary candidates from this document. No per-phrase label list. */
+/** Find noun phrases that can name a person. Use no fixed phrase list. */
 export function discoverReferenceCandidates(text: string): ReferenceCandidate[] {
 	if (!text) return []
 

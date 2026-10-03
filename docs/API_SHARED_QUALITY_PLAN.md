@@ -1,8 +1,51 @@
 # API and Shared Packages Quality Plan
 
-Status: recommendations only. This document does not change source code.
+Status: in progress. Track implementation below; remaining items stay queued.
 
 Scope: `apps/api`, `packages/shared`, `packages/core`, and `packages/coreference-worker`. The web application and UI packages are intentionally deferred.
+
+## Implementation tracking
+
+### Done — API services (items 1, 2, 4)
+
+- [x] **1. Split the case intelligence module**
+  - `cases/service.ts` is a thin facade (~54 lines). Public `CasesService` methods unchanged.
+  - Domain modules, all under 500 lines: `overview.ts`, `chronology.ts`, `graph.ts`, `network.ts`, `network-views.ts`, `network-helpers.ts`, `intelligence.ts`, `mentions.ts`, `types.ts`.
+  - Case tests split: `overview.test.ts`, `chronology-graph.test.ts`, `network.test.ts`.
+- [x] **2. Typed request/persistence models at API ingest seams**
+  - Chunks: `ChunkIngest` / `ChunkStoreBody` from Elysia `Static<>`; store writes `NewDocumentChunk` and `Partial<Document>`.
+  - Participants: `ParticipantIngest`; store writes `NewParticipant` / `NewCaseRelation`.
+  - Coreference: `clusters: string[][]`, mentions `{ text, start, end, cluster_id }`; `CoreferenceStoreBody`.
+  - Documents reprocess uses `document.textHash`.
+  - Case list uses `SQL[]` instead of `any[]`.
+  - JSONB text via `apps/api/src/lib/json.ts`.
+- [x] **4. Separate scoring from orchestration**
+  - `internal/chunks/similar-score.ts` — weighted mean-of-max, reasons, score mix.
+  - `internal/participants/recalibrate.ts` — case-document relevance bonus.
+- [x] **Entity service types** extracted to `entities/types.ts` (`entities/service.ts` 430 lines).
+
+Related OCR note (not Azure OCR): [paralegal/pdf-extract-python.md](./paralegal/pdf-extract-python.md).
+
+### Done — shared repositories, queue, typecheck scripts (items 3, 5, root scripts)
+
+- [x] **3.** Shared repositories no longer use `any` at the public seam.
+  - `BaseRepository` looks up `id` / order columns via `getTableColumns`; delete/update counts use `.returning()`.
+  - `db.execute` results go through `sqlRows<T>()`.
+  - Case/document `findMany` takes `SQL[]` + `PaginationOptions`.
+- [x] **5 (ioredis / BullMQ).** Shared `bullmq` aligned to `^5.67.1`. Queue constructors take `getConnectionOptions()` (host/port/password) so packages do not share an ioredis class identity. Root `overrides.ioredis` is `5.11.1`.
+- [x] **Root scripts.** `typecheck` runs explicit workspace filters (no recursive `filter='*'`). `lint` targets the web app. `clean` removes `dist` folders.
+
+`packages/shared`, `packages/core`, and `packages/workers` `tsc --noEmit` pass after a shared rebuild.
+
+### Not done (cannot honestly close in this pass)
+
+These are multi-week gates, not leftover service edits:
+
+- [ ] **6.** Authorization context + case/privilege filtering on every read path (product/security design + negative tests).
+- [ ] **7.** Deepen OCR/storage pipeline (Azure adapter, retry/idempotency interfaces).
+- [ ] **8–10.** Typed Python worker contracts, worker split, deterministic YAML/model loading.
+- [ ] **CI / gates:** 100% coverage, mutation testing, complexity/CRAP/Halstead analyzer, Knip/Ruff/Pyright, GitHub Actions artifacts.
+- [ ] **1 remainder:** `cases/index.ts` (491) and `cases/linker.ts` (432) already under the line cap.
 
 ## Objective
 

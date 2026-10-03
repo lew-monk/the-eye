@@ -5,7 +5,7 @@ export interface QueueConfig {
 	redisUrl: string
 }
 
-/** Plain connection config so BullMQ does not depend on a shared ioredis type identity. */
+/** Simple connection data. BullMQ thus needs no shared ioredis type. */
 export interface RedisConnectionOptions {
 	host: string
 	port: number
@@ -63,7 +63,7 @@ export class BullMQClient {
 		await this.connection.quit()
 	}
 
-	// Utility method to get queue info
+	// Get data about one queue.
 	async getQueueInfo(queueName: string): Promise<Awaited<ReturnType<Queue['getJobCounts']>>> {
 		const queue = new Queue(queueName, { connection: this.connection })
 		const info = await queue.getJobCounts()

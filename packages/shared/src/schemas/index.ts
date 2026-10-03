@@ -6,6 +6,8 @@ export * from './cases'
 
 // Document schemas and types
 export * from './documents'
+export * from './judgments'
+export * from './ingestion'
 export * from './paralegal'
 export * from './coreference'
 export * from './relations'

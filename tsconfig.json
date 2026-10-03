@@ -30,6 +30,7 @@
       "@workspace/shared": ["./packages/shared/src"],
       "@workspace/core": ["./packages/core/src"],
       "@workspace/workers": ["./packages/workers/src"],
+      "@workspace/ingestion": ["./packages/ingestion/src"],
       "@workspace/api": ["./apps/api/src"],
       "@workspace/eye-web-app": ["./apps/eye-web-app/src"]
     }
