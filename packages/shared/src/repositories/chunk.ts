@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { eq, sql } from 'drizzle-orm'
 import { BaseRepository } from './base'
+import { sqlRows } from './sql-rows'
 import { documentChunks, type DocumentChunk, type NewDocumentChunk } from '../schemas'
 import {
 	EMBEDDING_COLUMN_DIMENSIONS,
@@ -60,7 +61,7 @@ export class DocumentChunkRepository extends BaseRepository<DocumentChunk, NewDo
 				...(model ? { embeddingModel: model } : {}),
 				...(meta?.textHash ? { chunkTextHash: meta.textHash } : {}),
 				updatedAt: new Date(),
-			} as any)
+			})
 			.where(eq(documentChunks.id, id))
 	}
 
@@ -95,7 +96,7 @@ export class DocumentChunkRepository extends BaseRepository<DocumentChunk, NewDo
 				LIMIT ${limit}
 			`,
 		)
-		return result as unknown as ChunkCosineRow[]
+		return sqlRows<ChunkCosineRow>(result)
 	}
 
 	private normalizeWrite(row: Omit<NewDocumentChunk, 'id'>): Omit<NewDocumentChunk, 'id'> {
@@ -110,7 +111,7 @@ export class DocumentChunkRepository extends BaseRepository<DocumentChunk, NewDo
 				row.embeddingModel,
 				row.embeddingDimensions ?? undefined,
 			)
-			next.embedding = prepared.columnVector as any
+			next.embedding = prepared.columnVector
 			next.embeddingDimensions = prepared.nativeDimensions
 		}
 		return next

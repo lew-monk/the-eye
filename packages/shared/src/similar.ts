@@ -16,7 +16,7 @@ export interface SimilarCaseResult {
 export interface SimilarCasesResponse {
 	caseId: number
 	similarCases: SimilarCaseResult[]
-	/** True when the target has no usable vectors (pending embed, failed job, or model mismatch). */
+	/** True when the target has no usable vectors. Causes: pending embed, failed job, or model mismatch. */
 	indexIncomplete: boolean
 	embeddingModel: string | null
 }

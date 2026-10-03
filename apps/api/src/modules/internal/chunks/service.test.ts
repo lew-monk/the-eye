@@ -211,11 +211,11 @@ describe('ChunksService.getSimilar', () => {
 		const result = await ChunksService.getSimilar(1, { alpha: 0.5, beta: 0.5, gamma: 0, limit: 10 })
 
 		expect(result!.similarCases.length).toBe(1)
-		expect(result!.similarCases[0].caseId).toBe(2)
-		expect(result!.similarCases[0].score).toBeCloseTo(0.75, 2)
-		expect(result!.similarCases[0].breakdown.entityOverlap).toBe(0.8)
-		expect(result!.similarCases[0].breakdown.embeddingCos).toBe(0.7)
-		expect(result!.similarCases[0].reasons.length).toBe(2)
+		expect(result!.similarCases[0]!.caseId).toBe(2)
+		expect(result!.similarCases[0]!.score).toBeCloseTo(0.75, 2)
+		expect(result!.similarCases[0]!.breakdown.entityOverlap).toBe(0.8)
+		expect(result!.similarCases[0]!.breakdown.embeddingCos).toBe(0.7)
+		expect(result!.similarCases[0]!.reasons.length).toBe(2)
 		expect(result!.indexIncomplete).toBe(false)
 		expect(mockChunkFindSimilarChunks.mock.calls[0]?.[3]).toEqual({
 			embeddingModel: 'text-embedding-3-small',
@@ -235,8 +235,8 @@ describe('ChunksService.getSimilar', () => {
 		const result = await ChunksService.getSimilar(1, OPTS)
 
 		expect(result!.similarCases.length).toBe(1)
-		expect(result!.similarCases[0].score).toBeCloseTo(0.25, 2)
-		expect(result!.similarCases[0].breakdown.embeddingCos).toBeNull()
+		expect(result!.similarCases[0]!.score).toBeCloseTo(0.25, 2)
+		expect(result!.similarCases[0]!.breakdown.embeddingCos).toBeNull()
 		expect(result!.indexIncomplete).toBe(true)
 		expect(mockChunkFindSimilarChunks).not.toHaveBeenCalled()
 	})
@@ -256,7 +256,7 @@ describe('ChunksService.getSimilar', () => {
 		const result = await ChunksService.getSimilar(1, { ...OPTS, limit: 2 })
 
 		expect(result!.similarCases.length).toBe(2)
-		expect(result!.similarCases[0].score).toBeGreaterThanOrEqual(result!.similarCases[1].score)
+		expect(result!.similarCases[0]!.score).toBeGreaterThanOrEqual(result!.similarCases[1]!.score)
 	})
 
 	it('builds correct reasons', async () => {
@@ -273,7 +273,7 @@ describe('ChunksService.getSimilar', () => {
 
 		const result = await ChunksService.getSimilar(1, OPTS)
 
-		expect(result!.similarCases[0].reasons).toEqual([
+		expect(result!.similarCases[0]!.reasons).toEqual([
 			'Shared participants (entity overlap: 0.60)',
 			'Similar legal substance (embedding: 0.40)',
 		])

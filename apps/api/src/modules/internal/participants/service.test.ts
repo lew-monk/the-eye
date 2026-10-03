@@ -93,7 +93,7 @@ describe('ParticipantsService.store()', () => {
 		const records = inserted([{ normalizedName: 'john-doe', relevanceScore: 0.7 }])
 		mockParticipantCreateMany.mockResolvedValue(records)
 
-		const result = await ParticipantsService.store(DOC_ID, [{ name: 'John Doe', normalizedName: 'john-doe' }], VERSION)
+		const result = await ParticipantsService.store(DOC_ID, [{ name: 'John Doe', normalizedName: 'john-doe', role: 'witness', entityType: 'person' }], VERSION)
 
 		expect(result).toEqual({ count: 1 })
 		expect(mockParticipantDeleteByDocumentId).toHaveBeenCalledWith(DOC_ID)
@@ -110,7 +110,7 @@ describe('ParticipantsService.store()', () => {
 		mockParticipantCreateMany.mockResolvedValue(records)
 		mockParticipantFindCaseEntityOverlap.mockResolvedValue([])
 
-		await ParticipantsService.store(DOC_ID, [{ name: 'Judge Smith', normalizedName: 'judge-smith', relevanceScore: 0.85 }], VERSION)
+		await ParticipantsService.store(DOC_ID, [{ name: 'Judge Smith', normalizedName: 'judge-smith', role: 'witness', entityType: 'person', relevanceScore: 0.85 }], VERSION)
 
 		const updateCalls = mockParticipantUpdateById.mock.calls
 		expect(updateCalls.length).toBe(1)
@@ -126,7 +126,7 @@ describe('ParticipantsService.store()', () => {
 		])
 		mockParticipantFindByCaseIdAndNormalizedNames.mockResolvedValue([])
 
-		await ParticipantsService.store(DOC_ID, [{ name: 'Lawyer Kamau', normalizedName: 'lawyer-kamau', relevanceScore: 0.7 }], VERSION)
+		await ParticipantsService.store(DOC_ID, [{ name: 'Lawyer Kamau', normalizedName: 'lawyer-kamau', role: 'witness', entityType: 'person', relevanceScore: 0.7 }], VERSION)
 
 		const updateCalls = mockParticipantUpdateById.mock.calls
 		expect(updateCalls.length).toBe(1)
@@ -142,7 +142,7 @@ describe('ParticipantsService.store()', () => {
 		])
 		mockParticipantFindByCaseIdAndNormalizedNames.mockResolvedValue([])
 
-		await ParticipantsService.store(DOC_ID, [{ name: 'Defendant Kariuki', normalizedName: 'defendant-kariuki', relevanceScore: 0.6 }], VERSION)
+		await ParticipantsService.store(DOC_ID, [{ name: 'Defendant Kariuki', normalizedName: 'defendant-kariuki', role: 'witness', entityType: 'person', relevanceScore: 0.6 }], VERSION)
 
 		const updateCalls = mockParticipantUpdateById.mock.calls
 		expect(updateCalls.length).toBe(1)
@@ -158,7 +158,7 @@ describe('ParticipantsService.store()', () => {
 		])
 		mockParticipantFindByCaseIdAndNormalizedNames.mockResolvedValue([])
 
-		await ParticipantsService.store(DOC_ID, [{ name: 'Judge Wanjiku', normalizedName: 'judge-wanjiku', relevanceScore: 0.9 }], VERSION)
+		await ParticipantsService.store(DOC_ID, [{ name: 'Judge Wanjiku', normalizedName: 'judge-wanjiku', role: 'witness', entityType: 'person', relevanceScore: 0.9 }], VERSION)
 
 		const updateCalls = mockParticipantUpdateById.mock.calls
 		expect(updateCalls[0]?.[1]?.relevanceScore).toBe(1)
@@ -173,7 +173,7 @@ describe('ParticipantsService.store()', () => {
 		])
 		mockParticipantFindByCaseIdAndNormalizedNames.mockResolvedValue([])
 
-		await ParticipantsService.store(DOC_ID, [{ name: 'Unknown Entity', normalizedName: 'unknown-entity' }], VERSION)
+		await ParticipantsService.store(DOC_ID, [{ name: 'Unknown Entity', normalizedName: 'unknown-entity', role: 'witness', entityType: 'person' }], VERSION)
 
 		const updateCalls = mockParticipantUpdateById.mock.calls
 		expect(updateCalls[0]?.[1]?.relevanceScore).toBeCloseTo(0.167, 2)
@@ -192,8 +192,8 @@ describe('ParticipantsService.store()', () => {
 		mockParticipantFindByCaseIdAndNormalizedNames.mockResolvedValue([])
 
 		await ParticipantsService.store(DOC_ID, [
-			{ name: 'Overlapping', normalizedName: 'overlapping', relevanceScore: 0.8 },
-			{ name: 'Unique', normalizedName: 'unique', relevanceScore: 0.4 },
+			{ name: 'Overlapping', normalizedName: 'overlapping', role: 'witness', entityType: 'person', relevanceScore: 0.8 },
+			{ name: 'Unique', normalizedName: 'unique', role: 'witness', entityType: 'person', relevanceScore: 0.4 },
 		], VERSION)
 
 		const updateCalls = mockParticipantUpdateById.mock.calls
@@ -219,7 +219,7 @@ describe('ParticipantsService.store()', () => {
 			{ id: 300, normalizedName: 'kamau', relevanceScore: 0.6, documentId: 12 },
 		])
 
-		await ParticipantsService.store(DOC_ID, [{ name: 'Kamau', normalizedName: 'kamau', relevanceScore: 0.7 }], VERSION)
+		await ParticipantsService.store(DOC_ID, [{ name: 'Kamau', normalizedName: 'kamau', role: 'witness', entityType: 'person', relevanceScore: 0.7 }], VERSION)
 
 		const updateCalls = mockParticipantUpdateById.mock.calls
 		expect(updateCalls.length).toBe(3)
@@ -239,7 +239,7 @@ describe('ParticipantsService.store()', () => {
 		mockParticipantCreateMany.mockResolvedValue(records)
 		mockParticipantFindCaseEntityOverlap.mockResolvedValue([])
 
-		await ParticipantsService.store(DOC_ID, [{ name: 'Unique Entity', normalizedName: 'unique-entity', relevanceScore: 0.5 }], VERSION)
+		await ParticipantsService.store(DOC_ID, [{ name: 'Unique Entity', normalizedName: 'unique-entity', role: 'witness', entityType: 'person', relevanceScore: 0.5 }], VERSION)
 
 		expect(mockParticipantFindByCaseIdAndNormalizedNames).not.toHaveBeenCalled()
 	})
@@ -261,7 +261,7 @@ describe('ParticipantsService.store()', () => {
 		const records = inserted([{ normalizedName: 'zero-ver' }])
 		mockParticipantCreateMany.mockResolvedValue(records)
 
-		const result = await ParticipantsService.store(DOC_ID, [{ name: 'Zero', normalizedName: 'zero-ver' }], 0)
+		const result = await ParticipantsService.store(DOC_ID, [{ name: 'Zero', normalizedName: 'zero-ver', role: 'witness', entityType: 'person' }], 0)
 
 		expect(result).toEqual({ count: 1 })
 		const createArgs = mockParticipantCreateMany.mock.calls[0]?.[0]
@@ -274,13 +274,13 @@ describe('ParticipantsService.store()', () => {
 		mockParticipantCreateMany.mockRejectedValue(new Error('DB error'))
 
 		await expect(
-			ParticipantsService.store(DOC_ID, [{ name: 'Fail', normalizedName: 'fail' }], VERSION),
+			ParticipantsService.store(DOC_ID, [{ name: 'Fail', normalizedName: 'fail', role: 'witness', entityType: 'person' }], VERSION),
 		).rejects.toThrow('DB error')
 	})
 
 	it('preserves all participant fields through createMany', async () => {
 		mockDocFindById.mockResolvedValue({ id: DOC_ID, caseId: null })
-		const participant = { name: 'Jane Doe', normalizedName: 'jane-doe', role: 'judge', relevanceScore: 0.9, mentionCount: 5 }
+		const participant = { name: 'Jane Doe', normalizedName: 'jane-doe', role: 'judge', entityType: 'person', relevanceScore: 0.9, mentionCount: 5 }
 		const records = inserted([{ normalizedName: 'jane-doe', relevanceScore: 0.9 }])
 		mockParticipantCreateMany.mockResolvedValue(records)
 
@@ -304,7 +304,7 @@ describe('ParticipantsService.store()', () => {
 			{ id: 1, normalizedName: 'kamau', relevanceScore: 0.7, documentId: DOC_ID },
 		])
 
-		await ParticipantsService.store(DOC_ID, [{ name: 'Kamau', normalizedName: 'kamau', relevanceScore: 0.7 }], VERSION)
+		await ParticipantsService.store(DOC_ID, [{ name: 'Kamau', normalizedName: 'kamau', role: 'witness', entityType: 'person', relevanceScore: 0.7 }], VERSION)
 
 		const extractionLog = mockDocAddProcessingLog.mock.calls.find(
 			(c: any) => c[0]?.action === 'participants_extracted',
@@ -334,7 +334,7 @@ describe('ParticipantsService.store()', () => {
 			{ id: 200, normalizedName: 'kamau', relevanceScore: 0.6 },
 		])
 
-		await ParticipantsService.store(DOC_ID, [{ name: 'Kamau', normalizedName: 'kamau', relevanceScore: 0.7 }], VERSION)
+		await ParticipantsService.store(DOC_ID, [{ name: 'Kamau', normalizedName: 'kamau', role: 'witness', entityType: 'person', relevanceScore: 0.7 }], VERSION)
 
 		const recalibrationLog = mockDocAddProcessingLog.mock.calls.find(
 			(c: any) => c[0]?.action === 'participants_recalibrated',
@@ -361,7 +361,7 @@ describe('ParticipantsService.store()', () => {
 			},
 		])
 
-		await ParticipantsService.store(DOC_ID, [{ name: 'Cross Entity', normalizedName: 'cross-entity', relevanceScore: 0.8 }], VERSION)
+		await ParticipantsService.store(DOC_ID, [{ name: 'Cross Entity', normalizedName: 'cross-entity', role: 'witness', entityType: 'person', relevanceScore: 0.8 }], VERSION)
 
 		expect(mockCaseRelationCreate).toHaveBeenCalledTimes(1)
 		const createCall = mockCaseRelationCreate.mock.calls[0]?.[0]
@@ -381,7 +381,7 @@ describe('ParticipantsService.store()', () => {
 		mockParticipantFindByCaseIdAndNormalizedNames.mockResolvedValue([])
 		mockCaseRelationFindExisting.mockResolvedValue({ id: 99 })
 
-		await ParticipantsService.store(DOC_ID, [{ name: 'Dup', normalizedName: 'dup-entity', relevanceScore: 0.8 }], VERSION)
+		await ParticipantsService.store(DOC_ID, [{ name: 'Dup', normalizedName: 'dup-entity', role: 'witness', entityType: 'person', relevanceScore: 0.8 }], VERSION)
 
 		expect(mockCaseRelationCreate).not.toHaveBeenCalled()
 	})
@@ -401,7 +401,7 @@ describe('ParticipantsService.store()', () => {
 			},
 		])
 
-		await ParticipantsService.store(DOC_ID, [{ name: 'XEntity', normalizedName: 'xentity', relevanceScore: 0.7 }], VERSION)
+		await ParticipantsService.store(DOC_ID, [{ name: 'XEntity', normalizedName: 'xentity', role: 'witness', entityType: 'person', relevanceScore: 0.7 }], VERSION)
 
 		const crossLog = mockDocAddProcessingLog.mock.calls.find(
 			(c: any) => c[0]?.action === 'cross_case_relations_created',
@@ -434,8 +434,8 @@ describe('ParticipantsService.store()', () => {
 		])
 
 		await ParticipantsService.store(DOC_ID, [
-			{ name: 'Entity A', normalizedName: 'entity-a', relevanceScore: 0.7 },
-			{ name: 'Entity B', normalizedName: 'entity-b', relevanceScore: 0.6 },
+			{ name: 'Entity A', normalizedName: 'entity-a', role: 'witness', entityType: 'person', relevanceScore: 0.7 },
+			{ name: 'Entity B', normalizedName: 'entity-b', role: 'witness', entityType: 'person', relevanceScore: 0.6 },
 		], VERSION)
 
 		expect(mockCaseRelationCreate).toHaveBeenCalledTimes(2)

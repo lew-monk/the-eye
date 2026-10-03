@@ -49,6 +49,15 @@ The worker talks to an `EmbeddingProvider` port (`packages/workers/src/embedding
 REDIS_URL=redis://localhost:6379
 ```
 
+### Ingestion worker (any collection, judgments default)
+```bash
+INGEST_COLLECTIONS=judgments            # comma-separated; each non-default collection gets its own ingest:<name> queue
+INGEST_WORKER_CONCURRENCY=2
+SUMMARY_MODEL=                          # default: gpt-4o-mini (openai) or llama3.1:8b (ollama)
+```
+Run: `bun run worker` in `apps/api` (dev compose starts `ingestion-worker` automatically). `POST /ingestion/jobs` accepts optional `collection` (defaults to `judgments`); storage keys are prefixed `<collection>/...` and rows land in `judgment_documents` with the collection set.
+- Queue visibility: `GET /ingestion/queues/status` reports waiting/active/completed/failed per queue — if `waiting > 0` while `active == 0`, the worker is down or not subscribed (check `INGEST_COLLECTIONS` and Redis). The API logs `[INGEST-API] job-create-*` and per-file `enqueue-file` lines; the worker logs `[INGEST-WORKER] file-*` stages. Enqueue failures mark files (never the whole job) with `enqueue failed: …` in `lastError`.
+
 ### Object storage (original uploads — MinIO / S3)
 
 Persists original PDFs/images via `ObjectStorage` (`packages/core`). OCR still uses in-memory buffers in v1.
@@ -68,6 +77,8 @@ MINIO_ROOT_PASSWORD=minioadmin
 
 - Console (dev): http://localhost:9001  
 - Download / preview API: `GET /documents/:id/file?disposition=inline|attachment` (streams original when `storage_key` is set). When `COREF_SERVICE_TOKEN` or `API_SERVICE_TOKEN` is set, the API requires `x-api-key`. The web BFF checks the user session and forwards the token — the web process must have the same token as the API.  
+- Web BFF → API auth: the universal client (`apps/eye-web-app/src/lib/api-client.ts`) attaches `x-api-key` on every upstream call. Credential chain: per-request override → browser localStorage `the-eye:api-key` (opt-in via Profile → USE_IN_BROWSER) → server `API_SERVICE_TOKEN` → `COREF_SERVICE_TOKEN`. The API ingestion routes (`/ingestion/*`) use the shared service-token guard (same pattern as `/documents/*`); per-user API keys remain for external consumers.
+- Optional browser-direct API access: `VITE_API_URL=https://api.example.com` (without it, the browser only calls same-origin `/api/*` BFF routes).
 - Swap to AWS: `STORAGE_PROVIDER=s3`, real credentials, optional `S3_FORCE_PATH_STYLE=false`
 
 ### OCR Confidence Thresholds (Optional)

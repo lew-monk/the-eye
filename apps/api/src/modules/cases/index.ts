@@ -1,5 +1,5 @@
 import { Elysia, t } from 'elysia'
-import { eq } from 'drizzle-orm'
+import { eq, type SQL } from 'drizzle-orm'
 import {
 	caseRepository,
 	documentRepository,
@@ -51,7 +51,7 @@ export const casesRouter = new Elysia({ prefix: '/cases' })
 		'/',
 		async ({ query }) => {
 			try {
-				const conditions: any[] = []
+				const conditions: SQL[] = []
 				if (query.status) {
 					conditions.push(eq(cases.status, query.status))
 				}

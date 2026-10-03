@@ -1,14 +1,25 @@
 import { documentRepository, participantRepository, caseRelationRepository } from '@workspace/shared'
+import type { NewCaseRelation, NewParticipant } from '@workspace/shared'
+import type { ParticipantIngest } from './model'
+import { recalibrateRelevance } from './recalibrate'
 
 export abstract class ParticipantsService {
-	static async store(documentId: number, participants: any[], extractionVersion: number) {
+	static async store(documentId: number, participants: ParticipantIngest[], extractionVersion: number) {
 		const document = await documentRepository.findById(documentId)
 		if (!document) return null
 
-		const rows = participants.map((p) => ({
-			...p,
+		const rows: NewParticipant[] = participants.map((p) => ({
+			name: p.name,
+			normalizedName: p.normalizedName,
+			role: p.role,
 			documentId,
 			extractionVersion,
+			roleConfidence: p.roleConfidence,
+			entityType: p.entityType ?? null,
+			mentionCount: p.mentionCount,
+			mentions: p.mentions,
+			clusterId: p.clusterId,
+			relevanceScore: p.relevanceScore,
 		}))
 
 		await participantRepository.deleteByDocumentId(documentId)
@@ -16,7 +27,7 @@ export abstract class ParticipantsService {
 
 		await documentRepository.updateById(documentId, {
 			extractionVersion,
-		} as any)
+		})
 
 		await documentRepository.addProcessingLog({
 			documentId,
@@ -32,22 +43,15 @@ export abstract class ParticipantsService {
 			const overlapByName = new Map(overlap.map((o) => [o.normalizedName, o]))
 			const updatedIds = new Set<number>()
 
-			const recalibrate = (docCount: number, totalDocs: number, baseScore: number | null) => {
-				const base = baseScore ?? 0
-				if (totalDocs <= 1) return base
-				const bonus = ((docCount - 1) / totalDocs) * 0.5
-				return Math.min(1, base + bonus)
-			}
-
 			for (const p of inserted) {
 				const o = overlapByName.get(p.normalizedName)
 				const docCount = o?.docCount ?? 1
 				const totalDocs = o?.totalDocsInCase ?? 1
-				const score = recalibrate(docCount, totalDocs, p.relevanceScore)
+				const score = recalibrateRelevance(docCount, totalDocs, p.relevanceScore)
 
 				await participantRepository.updateById(p.id, {
 					relevanceScore: score,
-				} as any)
+				})
 				updatedIds.add(p.id)
 			}
 
@@ -64,11 +68,11 @@ export abstract class ParticipantsService {
 					const o = overlapByName.get(p.normalizedName)
 					if (!o) continue
 
-					const score = recalibrate(o.docCount, o.totalDocsInCase, p.relevanceScore)
+					const score = recalibrateRelevance(o.docCount, o.totalDocsInCase, p.relevanceScore)
 
 					await participantRepository.updateById(p.id, {
 						relevanceScore: score,
-					} as any)
+					})
 					updatedIds.add(p.id)
 				}
 			}
@@ -109,7 +113,7 @@ export abstract class ParticipantsService {
 						? [document.caseId, overlap.matchedCaseId]
 						: [overlap.matchedCaseId, document.caseId]
 
-				await caseRelationRepository.create({
+				const relation: NewCaseRelation = {
 					sourceCaseId: sourceId,
 					targetCaseId: targetId,
 					relationType: 'shared_entity',
@@ -120,7 +124,8 @@ export abstract class ParticipantsService {
 						matchedCaseNumber: overlap.matchedCaseNumber,
 						totalMentionsAcrossCases: overlap.totalMentionsAcrossCases,
 					},
-				} as any)
+				}
+				await caseRelationRepository.create(relation)
 				relationCount++
 			}
 

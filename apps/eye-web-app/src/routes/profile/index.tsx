@@ -7,8 +7,8 @@ import {
 	FormControl,
 	FormField,
 	FormLabel,
-	getErrorMessage,
 	GlassPanel,
+	getErrorMessage,
 	HudDialog,
 	InputField,
 	StatusDot,
@@ -16,6 +16,11 @@ import {
 import { useState } from "react";
 import { z } from "zod";
 import { useTRPC } from "#/integrations/trpc/react";
+import {
+	clearBrowserApiKey,
+	hasBrowserApiKey,
+	setBrowserApiKey,
+} from "#/lib/api-client";
 
 export const Route = createFileRoute("/profile/")({ component: ApiKeys });
 
@@ -44,7 +49,10 @@ function ApiKeys() {
 	const queryClient = useQueryClient();
 	const [revealedKey, setRevealedKey] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
-	const [revokeTarget, setRevokeTarget] = useState<{ id: number; name: string } | null>(null);
+	const [revokeTarget, setRevokeTarget] = useState<{
+		id: number;
+		name: string;
+	} | null>(null);
 
 	const queryResult = useQuery(trpc.apiKeys.list.queryOptions());
 	const apiKeys = Array.isArray(queryResult.data) ? queryResult.data : [];
@@ -149,6 +157,21 @@ function ApiKeys() {
 							{revealedKey}
 						</code>
 					</div>
+					<div className="flex items-center gap-2 mt-2">
+						<Button
+							variant="glow"
+							size="sm"
+							onClick={() => {
+								setBrowserApiKey(revealedKey);
+								setRevealedKey(null);
+							}}
+						>
+							USE_IN_BROWSER
+						</Button>
+						<span className="font-mono text-meta text-outline">
+							STORES_KEY_FOR_DIRECT_UI_REQUESTS
+						</span>
+					</div>
 				</GlassPanel>
 			)}
 
@@ -161,6 +184,17 @@ function ApiKeys() {
 					<span className="font-mono text-body text-outline ml-auto">
 						{apiKeys.length} KEY{apiKeys.length !== 1 ? "S" : ""}
 					</span>
+					{hasBrowserApiKey() && (
+						<Button
+							variant="ghost"
+							size="sm"
+							brackets={false}
+							className="text-primary/50"
+							onClick={() => clearBrowserApiKey()}
+						>
+							CLEAR_BROWSER_KEY
+						</Button>
+					)}
 				</div>
 
 				{isLoading ? (
@@ -200,9 +234,7 @@ function ApiKeys() {
 										)}
 									</div>
 									<div className="flex items-center gap-2 text-body text-outline">
-										<code className="font-mono">
-											{maskKey(key.keyPrefix)}
-										</code>
+										<code className="font-mono">{maskKey(key.keyPrefix)}</code>
 										<span className="text-outline">|</span>
 										<span>
 											{key.permission
@@ -230,7 +262,9 @@ function ApiKeys() {
 										variant="ghost"
 										size="sm"
 										className="opacity-0 group-hover:opacity-100 transition-opacity"
-										onClick={() => setRevokeTarget({ id: key.id, name: key.name })}
+										onClick={() =>
+											setRevokeTarget({ id: key.id, name: key.name })
+										}
 									>
 										REVOKE
 									</Button>
@@ -249,10 +283,14 @@ function ApiKeys() {
 					</span>
 				</div>
 
-				<Form form={form} className="space-y-4 grid" onSubmit={(e) => {
-					e.preventDefault();
-					form.handleSubmit();
-				}}>
+				<Form
+					form={form}
+					className="space-y-4 grid"
+					onSubmit={(e) => {
+						e.preventDefault();
+						form.handleSubmit();
+					}}
+				>
 					<FormField
 						name="name"
 						validators={{
@@ -371,26 +409,35 @@ function ApiKeys() {
 
 			<HudDialog
 				open={revokeTarget !== null}
-				onOpenChange={(open) => { if (!open) setRevokeTarget(null) }}
+				onOpenChange={(open) => {
+					if (!open) setRevokeTarget(null);
+				}}
 				title="REVOKE_API_KEY"
-				indexCode={revokeTarget ? `KEY_${String(revokeTarget.id).padStart(4, "0")}` : undefined}
+				indexCode={
+					revokeTarget
+						? `KEY_${String(revokeTarget.id).padStart(4, "0")}`
+						: undefined
+				}
 				variant="destructive"
 				primaryActionLabel="REVOKE_KEY"
 				onPrimaryAction={() => {
 					if (revokeTarget) {
-						revokeMutation.mutate({ id: revokeTarget.id })
-						setRevokeTarget(null)
+						revokeMutation.mutate({ id: revokeTarget.id });
+						setRevokeTarget(null);
 					}
 				}}
 				size="sm"
 			>
 				<p>
 					This action will permanently revoke the API key{" "}
-					<strong className="font-mono text-on-surface">{revokeTarget?.name}</strong>.
+					<strong className="font-mono text-on-surface">
+						{revokeTarget?.name}
+					</strong>
+					.
 				</p>
 				<p className="mt-1 text-outline">
-					Any services using this key will lose access immediately.
-					This cannot be undone.
+					Any services using this key will lose access immediately. This cannot
+					be undone.
 				</p>
 			</HudDialog>
 		</div>

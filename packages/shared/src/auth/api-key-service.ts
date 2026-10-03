@@ -1,55 +1,58 @@
 import { ApiKeyRepository } from "../repositories/api-key";
-import { Permission, RateLimit, type ApiKey } from "../schemas";
+import { type Permission, type RateLimit, type ApiKey } from "../schemas";
 import { InsufficientPermissionsError, InvalidApiKeyError } from "../exceptions";
 import IORedis from 'ioredis'
 import crypto from 'crypto'
 import { getQueueConfig } from "../queue";
 
 /**
- * API Key Service -- Validates API keys and permissions
- * @private {IORedis} connection - The Redis connection
- * @private {ApiKeyRepository} apiKeyRepository - The API key repository
- * @method addApiKeyToRedis - Add the API key to redis for rate limiting, permissions, and usage tracking
- * @method removeApiKeyFromRedis - Remove the API key from redis
- * @method getApiKeyFromRedis - Get the API key from redis
- * @method updateApiKeyInRedis - Update the API key in redis
- * @method getApiKey - Get the API key from the database or redis
- * @method checkPermission - Check if the API key has the required permissions
- * @method checkRateLimit - Check if the API key has passed the rate limit
- *
+ * API Key Service. Validates API keys and permissions.
+ * Uses Redis for rate limit data, permission data, and usage data.
  */
+export function hashApiKey(rawKey: string): string {
+	// Store keys as sha256(raw). Hash each lookup first.
+	// A raw value never matches the hash column.
+	return crypto.createHash('sha256').update(rawKey).digest('hex')
+}
+
 export class ApiKeyService {
 	private connection: IORedis
 	constructor(
 		private apiKeyRepository: ApiKeyRepository,
+		connection?: Pick<IORedis, 'get' | 'set' | 'del'>,
 	) {
-		const config = getQueueConfig()
-		this.connection = new IORedis(config.redisUrl, {
-			maxRetriesPerRequest: null,
-		})
+		if (connection) {
+			this.connection = connection as IORedis
+		} else {
+			const config = getQueueConfig()
+			this.connection = new IORedis(config.redisUrl, {
+				maxRetriesPerRequest: null,
+			})
+		}
 	}
 	/**
-	 * Add the API key to redis for rate limiting, permissions, and usage tracking
-	 * @param apiKey {ApiKey} The API key to add to redis
-	 * @returns {Promise<void>} A promise that resolves when the API key is added to redis
+	 * Add the API key to Redis.
+	 * Redis holds rate limit data, permission data, and usage data.
+	 * @param apiKey {ApiKey} The API key to store.
+	 * @returns {Promise<void>} Resolves when the system stores the API key.
 	 * */
 	async addApiKeyToRedis(apiKey: ApiKey): Promise<void> {
 		const key = `api-key:${apiKey.keyHash}`
 		await this.connection.set(key, JSON.stringify(apiKey))
 	}
 	/**
-	 * Remove the API key from redis
-	 * @param apiKey {string} The API key hash
-	 * @returns {Promise<void>} A promise that resolves when the API key is removed from redis
+	 * Remove the API key from Redis.
+	 * @param apiKey {ApiKey} The API key to remove.
+	 * @returns {Promise<void>} Resolves when the system removes the API key.
 	 * */
 	async removeApiKeyFromRedis(apiKey: ApiKey): Promise<void> {
 		const key = `api-key:${apiKey.keyHash}`
 		await this.connection.del(key)
 	}
 	/**
-	 * Get the API key from redis
-	 * @param apiKeyHash {string} The API key hash
-	 * @returns {Promise<ApiKey | null>} A promise that resolves to the API key or null if not found
+	 * Get the API key from Redis.
+	 * @param apiKeyHash {string} The API key hash.
+	 * @returns {Promise<ApiKey | null>} The API key, or null when not found.
 	 * */
 	async getApiKeyFromRedis(apiKeyHash: string): Promise<ApiKey | null> {
 		try {
@@ -60,16 +63,15 @@ export class ApiKeyService {
 			}
 			return JSON.parse(value)
 		} catch (error) {
-			console.error('Error getting API key from redis:', error)
+			console.error('Error getting API key from Redis:', error)
 			return null
 		}
 	}
 
 	/**
-	 * Update the API key in redis
-	 * @param apiKey
-	 * @param permission
-	 * @returns {Promise<{allowed: boolean, apiKey: ApiKey}>} A promise object with allowed: true if the API key has the required permissions, false otherwise and apiKey: the API key record if allowed is true
+	 * Update the API key in Redis.
+	 * @param apiKey The API key to update.
+	 * @returns {Promise<{allowed: boolean, apiKey: ApiKey}>} The update result. Allowed is always true.
 	 */
 	async updateApiKeyInRedis(apiKey: ApiKey): Promise<{ allowed: boolean, apiKey: ApiKey }> {
 		const key = `api-key:${apiKey.keyHash}`
@@ -78,10 +80,10 @@ export class ApiKeyService {
 	}
 
 	/**
-	 * Check if the API key has the required permissions
-	 * @param apiKey
-	 * @param permission
-	 * @returns {Promise<{allowed: boolean, apiKey: ApiKey}>} A promise object with allowed: true if the API key has the required permissions, false otherwise and apiKey: the API key record if allowed is true
+	 * Check if the API key has the required permission.
+	 * @param apiKey The raw API key value.
+	 * @param permission The required permission.
+	 * @returns {Promise<{allowed: boolean, apiKey: ApiKey}>} The check result and the API key record.
 	 */
 	async checkPermission(apiKey: string, permission: Permission): Promise<{ allowed: boolean, apiKey: ApiKey }> {
 		const apiKeyRecord = await this.getApiKey(apiKey)
@@ -89,18 +91,18 @@ export class ApiKeyService {
 			throw new InvalidApiKeyError('Invalid API key')
 		}
 
-		// Check if the service permission exists
+		// Check the service permission.
 		let permissionReference = apiKeyRecord.permission.findIndex(p => p.service === permission.service)
 		if (permissionReference === -1) {
 			throw new InsufficientPermissionsError('Invalid service permission')
 		}
 
-		// Check if the resource permission exists
+		// Check the resource permission.
 		if (apiKeyRecord.permission[permissionReference]!.resource !== permission.resource) {
 			throw new InsufficientPermissionsError('Invalid resource permission')
 		}
 
-		// Check if the action is allowed
+		// Check each requested action.
 		if (permission.actions.length > 0) {
 			const allowedActions = apiKeyRecord.permission[permissionReference]!.actions
 			const hasWildcard = allowedActions.includes('*')
@@ -118,49 +120,51 @@ export class ApiKeyService {
 	}
 
 	/**
-	 * Get the API key from the database or redis
-	 * @param apiKey {string} The API key hash
-	 * @returns {Promise<ApiKey | null>} A promise that resolves to the API key or null if not found
+	 * Get the API key from Redis or the database.
+	 * Check Redis first. Then check the database. Store database hits in Redis.
+	 * @param apiKey {string} The raw API key value from the caller.
+	 * @returns {Promise<ApiKey | null>} The API key, or null when not found.
 	 * */
 	async getApiKey(apiKey: string): Promise<ApiKey | null> {
 		console.log('getApiKey', apiKey)
-		// Check if the API key exists in redis
-		let apiKeyRecord = await this.getApiKeyFromRedis(apiKey)
+		const keyHash = hashApiKey(apiKey)
+		// Check Redis first.
+		let apiKeyRecord = await this.getApiKeyFromRedis(keyHash)
 		if (apiKeyRecord) {
 			return apiKeyRecord
 		}
 
-		// Check if the API key exists in the database
-		apiKeyRecord = await this.apiKeyRepository.findByHash(apiKey)
+		// Check the database next.
+		apiKeyRecord = await this.apiKeyRepository.findByHash(keyHash)
 		console.log('apiKeyRecord', apiKeyRecord)
 		if (!apiKeyRecord) {
 			return null
 		}
 
-		// Add the API key to redis
+		// Store the database record in Redis.
 		await this.addApiKeyToRedis(apiKeyRecord)
 		return apiKeyRecord
 	}
 
 	/**
-	 * Check if the API key has suppassed the set rate limit
-	 * @param {string} apiKeyId
-	 * @param {Permission} permission
-	 * @returns {Promise<boolean>} A promise object with true if the API key has passed the rate limit, false otherwise
+	 * Check if the API key exceeds the rate limit.
+	 * @param {string} apiKeyId The raw API key value.
+	 * @param {Permission} permission The required permission.
+	 * @returns {Promise<boolean>} True when the call is allowed. False when the limit blocks it.
 	 */
-	async checkRateLimit(apiKeyId: string, permission: Permission, resource: string): Promise<boolean> {
+	async checkRateLimit(apiKeyId: string, permission: Permission, _resource: string): Promise<boolean> {
 		let { allowed, apiKey } = await this.checkPermission(apiKeyId, permission)
 
 		if (!apiKey) {
 			throw new InvalidApiKeyError('Invalid API key')
 		}
 
-		// Check if the action is allowed
+		// Check the requested action.
 		if (!allowed) {
 			throw new InsufficientPermissionsError('Insufficient permissions')
 		}
 
-		// Check if rate limit is enabled
+		// Allow the call when no rate limit is set.
 		if (!apiKey.rateLimit) {
 			return true
 		}

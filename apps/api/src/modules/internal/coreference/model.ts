@@ -1,10 +1,17 @@
-import { t } from 'elysia'
+import { t, type Static } from 'elysia'
+
+export const CoreferenceMentionModel = t.Object({
+	text: t.String(),
+	start: t.Number(),
+	end: t.Number(),
+	cluster_id: t.Number(),
+})
 
 export const CoreferenceModel = {
 	body: t.Object({
 		resolved_text: t.String(),
-		clusters: t.Array(t.Any()),
-		mentions: t.Array(t.Any()),
+		clusters: t.Array(t.Array(t.String())),
+		mentions: t.Array(CoreferenceMentionModel),
 		model: t.String(),
 		model_version: t.String(),
 		source_text_hash: t.String(),
@@ -16,3 +23,5 @@ export const CoreferenceModel = {
 		chunk_count: t.Optional(t.Number()),
 	}),
 }
+
+export type CoreferenceStoreBody = Static<typeof CoreferenceModel.body>

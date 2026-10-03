@@ -33,7 +33,7 @@ describe('UploadService.processUpload', () => {
 
 		expect(result).toEqual({ documentId: 123 })
 		expect(mockProcessDocument).toHaveBeenCalledTimes(1)
-		const [, metadata, , caseId] = mockProcessDocument.mock.calls[0]
+		const [, metadata, , caseId] = mockProcessDocument.mock.calls[0]!
 		expect(metadata.filename).toBe('judgment.pdf')
 		expect(metadata.fileType).toBe('pdf')
 		expect(metadata.fileSize).toBe(1024)
@@ -44,21 +44,21 @@ describe('UploadService.processUpload', () => {
 	it('passes correct fileType for uppercase extension', async () => {
 		const file = makeFile('JUDGMENT.PDF', 512)
 		await UploadService.processUpload(file, 'judgment')
-		const [, metadata] = mockProcessDocument.mock.calls[0]
+		const [, metadata] = mockProcessDocument.mock.calls[0]!
 		expect(metadata.fileType).toBe('pdf')
 	})
 
 	it('passes correct fileType for multi-dot filename', async () => {
 		const file = makeFile('report.final.pdf', 512)
 		await UploadService.processUpload(file, 'other')
-		const [, metadata] = mockProcessDocument.mock.calls[0]
+		const [, metadata] = mockProcessDocument.mock.calls[0]!
 		expect(metadata.fileType).toBe('pdf')
 	})
 
 	it('handles optional caseId as undefined when omitted', async () => {
 		const file = makeFile('doc.pdf', 512)
 		await UploadService.processUpload(file, 'judgment')
-		const [, , , caseId] = mockProcessDocument.mock.calls[0]
+		const [, , , caseId] = mockProcessDocument.mock.calls[0]!
 		expect(caseId).toBeUndefined()
 	})
 
@@ -129,7 +129,7 @@ describe('UploadService.processUpload', () => {
 	it('supports documentType with hyphens and underscores', async () => {
 		const file = makeFile('doc.pdf', 512)
 		await UploadService.processUpload(file, 'witness_statement')
-		const [, metadata] = mockProcessDocument.mock.calls[0]
+		const [, metadata] = mockProcessDocument.mock.calls[0]!
 		expect(metadata.documentType).toBe('witness_statement')
 	})
 })

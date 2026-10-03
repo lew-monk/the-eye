@@ -55,8 +55,8 @@ export class S3Driver implements ObjectStorageDriver {
 		const body = result.Body as Readable
 		return {
 			body,
-			contentType: result.ContentType,
-			contentLength: result.ContentLength,
+			...(result.ContentType ? { contentType: result.ContentType } : {}),
+			...(result.ContentLength != null ? { contentLength: result.ContentLength } : {}),
 		}
 	}
 

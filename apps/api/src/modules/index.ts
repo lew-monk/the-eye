@@ -6,6 +6,7 @@ import { internal } from './internal'
 import { casesRouter } from './cases'
 import { entitiesRouter } from './entities'
 import { documentsRouter } from './documents'
+import { ingestionRouter } from './ingestion'
 import { ChunksService } from './internal/chunks/service'
 import { CasesService } from './cases/service'
 import { participantRepository, chunkRepository, documentRepository } from '@workspace/shared'
@@ -18,6 +19,7 @@ export const modules = new Elysia()
 	.use(casesRouter)
 	.use(entitiesRouter)
 	.use(documentsRouter)
+	.use(ingestionRouter)
 	.get(
 		'/network/focus',
 		async ({ query, set }) => {

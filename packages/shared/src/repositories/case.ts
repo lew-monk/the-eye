@@ -1,5 +1,5 @@
-import { eq } from 'drizzle-orm'
-import { BaseRepository } from './base'
+import { eq, type SQL } from 'drizzle-orm'
+import { BaseRepository, type PaginationOptions } from './base'
 import { cases, type Case, type NewCase } from '../schemas'
 
 export class CaseRepository extends BaseRepository<Case, NewCase> {
@@ -7,7 +7,7 @@ export class CaseRepository extends BaseRepository<Case, NewCase> {
 		super(cases)
 	}
 
-	override async findMany(conditions: any[] = [], options: any = {}) {
+	override async findMany(conditions: SQL[] = [], options: PaginationOptions = {}) {
 		const { orderField = 'createdAt', ...restOptions } = options
 		return super.findMany(conditions, { ...restOptions, orderField })
 	}

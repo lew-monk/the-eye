@@ -186,6 +186,53 @@ services:
         max-size: "10m"
         max-file: "10"
 
+  ingestion-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: api-dev
+    env_file:
+      - ./.env
+    environment:
+      - INGEST_WORKER_CONCURRENCY=${INGEST_WORKER_CONCURRENCY:-2}
+      - INGEST_COLLECTIONS=${INGEST_COLLECTIONS:-judgments}
+      - PDF_EXTRACTOR=${PDF_EXTRACTOR:-azure}
+      - PDF_EXTRACT_FALLBACK=${PDF_EXTRACT_FALLBACK:-azure}
+      - STORAGE_PROVIDER=${STORAGE_PROVIDER:-minio}
+      - S3_ENDPOINT=${S3_ENDPOINT:-http://minio:9000}
+      - S3_REGION=${S3_REGION:-us-east-1}
+      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID:-minioadmin}
+      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-minioadmin}
+      - S3_BUCKET=${S3_BUCKET:-the-eye-documents}
+      - S3_FORCE_PATH_STYLE=${S3_FORCE_PATH_STYLE:-true}
+      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-openai}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
+      - SUMMARY_MODEL=${SUMMARY_MODEL:-}
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/api/node_modules
+      - /app/packages/shared/node_modules
+      - /app/packages/core/node_modules
+      - /app/packages/workers/node_modules
+      - /app/packages/ingestion/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    working_dir: /app
+    networks:
+      - the-eye-network
+    command: sh -c "bun install && cd apps/api && bun run worker:dev"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "10"
+
   coreference-worker:
     build:
       context: ./packages/coreference-worker

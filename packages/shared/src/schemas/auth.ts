@@ -11,7 +11,7 @@ export const users = pgTable('users', {
 	image: text('image'),
 	subscriptionTier: text('subscription_tier'),
 	organizationId: text('organization_id'),
-	metadata: jsonb('metadata').$type<Record<string, any>>(),
+	metadata: jsonb('metadata').$type<Record<string, string | number | boolean | null>>(),
 	createdAt: timestamp('created_at').notNull(),
 	updatedAt: timestamp('updated_at').notNull(),
 })

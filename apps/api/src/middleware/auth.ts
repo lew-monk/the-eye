@@ -50,5 +50,6 @@ export const requireServiceToken = () => {
 		if (got !== expected) {
 			return c.status(401, 'Unauthorized')
 		}
+		return
 	}
 }

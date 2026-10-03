@@ -12,12 +12,12 @@ export interface FailedJob {
 
 export async function getFailedEmbeddingJobs(documentId: number): Promise<FailedJob[]> {
   const client = new BullMQClient()
-  const queue = new Queue(EMBEDDING_QUEUE, { connection: client.getConnection() })
+  const queue = new Queue(EMBEDDING_QUEUE, { connection: client.getConnectionOptions() })
 
   try {
     const failed = await queue.getJobs(['failed'])
     return failed
-      .filter((j: any) => j.data.documentId === documentId)
+      .filter((j) => j.data?.documentId === documentId)
       .map((j) => ({
         id: j.id!,
         documentId: j.data.documentId,
@@ -32,11 +32,11 @@ export async function getFailedEmbeddingJobs(documentId: number): Promise<Failed
 
 export async function retryFailedEmbeddingJobs(documentId: number): Promise<number> {
   const client = new BullMQClient()
-  const queue = new Queue(EMBEDDING_QUEUE, { connection: client.getConnection() })
+  const queue = new Queue(EMBEDDING_QUEUE, { connection: client.getConnectionOptions() })
 
   try {
     const failed = await queue.getJobs(['failed'])
-    const documentJobs = failed.filter((j: any) => j.data.documentId === documentId)
+    const documentJobs = failed.filter((j) => j.data?.documentId === documentId)
     for (const job of documentJobs) {
       await job.retry()
     }
@@ -49,11 +49,11 @@ export async function retryFailedEmbeddingJobs(documentId: number): Promise<numb
 
 export async function requeueFailedEmbeddingJobs(documentId: number): Promise<number> {
   const client = new BullMQClient()
-  const queue = new Queue(EMBEDDING_QUEUE, { connection: client.getConnection() })
+  const queue = new Queue(EMBEDDING_QUEUE, { connection: client.getConnectionOptions() })
 
   try {
     const failed = await queue.getJobs(['failed'])
-    const documentJobs = failed.filter((j: any) => j.data.documentId === documentId)
+    const documentJobs = failed.filter((j) => j.data?.documentId === documentId)
 
     for (const job of documentJobs) {
       await job.remove()

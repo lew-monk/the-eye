@@ -1,5 +1,5 @@
 import { Elysia, t } from 'elysia'
-import { ApiKeyService, ApiKeyRepository } from '@workspace/shared'
+import { ApiKeyService, ApiKeyRepository, type RateLimit } from '@workspace/shared'
 import { AdminModel } from './model'
 
 let apiKeyRepository: ApiKeyRepository = new ApiKeyRepository()
@@ -11,12 +11,26 @@ export const admin = new Elysia({ prefix: '/admin' })
 		async ({ body }) => {
 			let req = body
 			try {
+				let rateLimit: RateLimit | null = null
+				if (req.rateLimit) {
+					const rl = req.rateLimit
+					if (rl.resource == null || rl.windowMs == null || rl.maxRequests == null || rl.message == null) {
+						throw new Error('Rate limit needs resource, windowMs, maxRequests, and message')
+					}
+					rateLimit = {
+						resource: rl.resource,
+						windowMs: rl.windowMs,
+						maxRequests: rl.maxRequests,
+						message: rl.message,
+						...(rl.maxBytes != null ? { maxBytes: rl.maxBytes } : {}),
+					}
+				}
 				const result = await apiKeyService.createKey(
 					req.userId,
 					req.name,
 					req.permission,
 					req.scopes || null,
-					req.rateLimit || null,
+					rateLimit,
 					new Date(req.expiresAt),
 				)
 				return { success: true, ...result }

@@ -3,6 +3,7 @@ import { createTRPCRouter, publicProcedure } from "./init";
 import { apiKeysRouter } from "./routers/api-keys";
 import { dashboardRouter } from "./routers/dashboard";
 import { casesRouter } from "./routers/cases";
+import { ingestionRouter } from "./routers/ingestion";
 
 const todos = [
 	{ id: 1, name: "Get groceries" },
@@ -26,5 +27,6 @@ export const trpcRouter = createTRPCRouter({
 	apiKeys: apiKeysRouter,
 	dashboard: dashboardRouter,
 	cases: casesRouter,
+	ingestion: ingestionRouter,
 });
 export type TRPCRouter = typeof trpcRouter;

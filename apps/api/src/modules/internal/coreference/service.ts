@@ -1,14 +1,11 @@
 import { documentRepository, coreferenceRepository } from '@workspace/shared'
+import { jsonObjectContent } from '../../../lib/json'
+import type { CoreferenceStoreBody } from './model'
 
 export abstract class CoreferenceService {
 	static async getExtractedText(documentId: number) {
 		const document = await documentRepository.findById(documentId)
 		if (!document) return null
-
-		const content =
-			document.fullContent && typeof document.fullContent === 'object'
-				? (document.fullContent as any).content || ''
-				: ''
 
 		const stored = await coreferenceRepository.findByDocumentId(documentId)
 		const existingCoref = stored
@@ -26,23 +23,29 @@ export abstract class CoreferenceService {
 				}
 			: null
 
+		const fullContent = document.fullContent
+		const text =
+			typeof fullContent === 'object' && fullContent !== null
+				? jsonObjectContent(fullContent)
+				: ''
+
 		return {
 			documentId: document.id,
-			text: content,
+			text,
 			documentType: document.documentType,
-			textHash: (document as any).textHash || null,
-			fileHash: (document as any).fileHash || null,
+			textHash: document.textHash || null,
+			fileHash: document.fileHash || null,
 			coreferenceSourceTextHash: stored?.sourceTextHash ?? null,
 			existingCoref,
 			status: document.status,
 		}
 	}
 
-	static async storeCoreference(documentId: number, body: any) {
+	static async storeCoreference(documentId: number, body: CoreferenceStoreBody) {
 		const document = await documentRepository.findById(documentId)
 		if (!document) return null
 
-		if ((document as any).textHash && (document as any).textHash !== body.source_text_hash) {
+		if (document.textHash && document.textHash !== body.source_text_hash) {
 			return { hashMismatch: true }
 		}
 

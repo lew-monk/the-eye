@@ -29,7 +29,6 @@ function easeOutCubic(t: number) {
 	return 1 - (1 - x) ** 3;
 }
 
-const SNAP_RADIUS = 2.6;
 const SNAP_MS = 520;
 
 const PERSON_ROLES = new Set([
@@ -82,14 +81,6 @@ function shortLabel(label: string, max = 16) {
 	return `${label.slice(0, max - 1)}…`;
 }
 
-function kindLetter(kind: string) {
-	if (kind === "case" || kind === "connected_case" || kind === "similar_case") return "C";
-	if (kind === "role") return "R";
-	if (kind === "document") return "D";
-	if (kind === "signal") return "S";
-	return "N";
-}
-
 function sceneBounds(laid: LaidOutNode[]) {
 	if (laid.length === 0) {
 		return { cx: 0, cz: 0, cy: 1, span: 16 };
@@ -132,6 +123,7 @@ function CameraRig({
 	const destTarget = useRef(new THREE.Vector3());
 	const active = useRef(false);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: flyToken is a retrigger token intentionally read by identity, not by value
 	useEffect(() => {
 		if (mode === "node" && focus) {
 			const w = toWorld(focus);
@@ -209,6 +201,7 @@ function GraphBox({
 	const opacity = parked ? 0.32 : dimmed ? 0.2 : 0.58 + glow * 0.38;
 
 	return (
+		// biome-ignore lint/a11y/noStaticElementInteractions: R3F canvas object, not DOM; keyboard shortcuts and live-region announcements are provided by the container
 		<group
 			position={[pose.x, pose.y, pose.z]}
 			scale={scale}
@@ -462,7 +455,7 @@ function SceneBody({
 	const drag = useRef<{ id: string; ox: number; oz: number } | null>(null);
 	const [draggingId, setDraggingId] = useState<string | null>(null);
 	const [snaps, setSnaps] = useState<Record<string, Snap>>({});
-	const [now, setNow] = useState(0);
+	const [, setNow] = useState(0);
 
 	const hitFloor = (clientX: number, clientY: number) => {
 		const rect = gl.domElement.getBoundingClientRect();
@@ -491,6 +484,7 @@ function SceneBody({
 		});
 	};
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: snap-all intentionally runs only on user request; parked/byId are read fresh at fire time
 	useEffect(() => {
 		if (!snapAllToken) return;
 		const entries = Object.entries(parked);
@@ -510,6 +504,7 @@ function SceneBody({
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [snapAllToken]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: snap-target intentionally runs only when a new target is set; parked is read fresh at fire time
 	useEffect(() => {
 		if (!snapTarget) return;
 		const pos = parked[snapTarget];
@@ -534,6 +529,7 @@ function SceneBody({
 		onParkedCount(Object.keys(parked).length);
 	}, [parked, onParkedCount]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: drag listeners attach per layout; handlers use refs and functional updates so extra deps would only churn listeners
 	useEffect(() => {
 		const move = (e: PointerEvent) => {
 			const d = drag.current;
@@ -613,8 +609,8 @@ function SceneBody({
 			}
 		}
 		return out;
-		// now is bumped during snap so poses refresh
-	}, [laid, parked, snaps, now]);
+		// snaps identity changes during animation so poses refresh
+	}, [laid, parked, snaps]);
 
 	const startDrag = (id: string, clientX: number, clientY: number) => {
 		const hit = hitFloor(clientX, clientY);
@@ -770,6 +766,7 @@ export function GraphWorld({
 	const hoverNode = hoverId ? laid.find((n) => n.id === hoverId) : null;
 	const selectedNode = selectedId ? laid.find((n) => n.id === selectedId) : null;
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: focusId is a change token that intentionally resets view state without being read
 	useEffect(() => {
 		setFrameMode("overview");
 		setFlyToken((n) => n + 1);
@@ -829,6 +826,8 @@ export function GraphWorld({
 	return (
 		<div
 			ref={wrapRef}
+			role="application"
+			// biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard-shortcut surface focused on mount; labelled and announced via live region
 			tabIndex={0}
 			className="relative h-full w-full min-h-0 bg-surface-container-lowest outline-none"
 			aria-label="Case network 3D view. Click a structure to inspect. Double-click to go inside. Right-click for menu."

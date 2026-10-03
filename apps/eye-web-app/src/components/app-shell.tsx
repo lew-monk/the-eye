@@ -216,6 +216,7 @@ function NewCaseDialog({
 
 const NAV_ITEMS = [
 	{ label: "DASHBOARD", to: "/" },
+	{ label: "INGEST", to: "/ingestion" },
 	{ label: "INTELLIGENCE", to: "#" },
 	{ label: "NETWORK", to: "/network" },
 	{ label: "ARCHIVE", to: "#" },
@@ -269,7 +270,12 @@ function UserMenu() {
 
 			{open && (
 				<>
-					<div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+					<button
+						type="button"
+						aria-label="Close menu"
+						className="fixed inset-0 z-40 cursor-default"
+						onClick={() => setOpen(false)}
+					/>
 					<div className="absolute right-0 top-full mt-1 z-50 w-48 border border-outline/40 bg-surface-container-high backdrop-blur-xl">
 						<div className="px-3 py-2 border-b border-outline-variant/20">
 							<p className="font-mono text-body uppercase tracking-wider text-primary/60">
@@ -428,13 +434,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 						&copy; THE_EYE
 					</span>
 					<span className="font-mono text-meta uppercase tracking-widest text-outline">
-						//
+						{"//"}
 					</span>
 					<span className="font-mono text-meta uppercase tracking-widest text-outline">
 						CLASSIFIED
 					</span>
 					<span className="font-mono text-meta uppercase tracking-widest text-outline">
-						//
+						{"//"}
 					</span>
 					<span className="font-mono text-meta uppercase tracking-widest text-outline">
 						LEVEL_7_AUTH_REQUIRED

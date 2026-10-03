@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as NetworkRouteImport } from './routes/network'
+import { Route as IngestionRouteImport } from './routes/ingestion'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ProfileRouteRouteImport } from './routes/profile/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -21,11 +22,17 @@ import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as ApiUploadSplatRouteImport } from './routes/api/upload.$'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api.trpc.$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiIngestionJobIdEventsRouteImport } from './routes/api/ingestion/$jobId/events'
 import { Route as ApiDocumentsDocumentIdFileRouteImport } from './routes/api/documents/$documentId/file'
 
 const NetworkRoute = NetworkRouteImport.update({
   id: '/network',
   path: '/network',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IngestionRoute = IngestionRouteImport.update({
+  id: '/ingestion',
+  path: '/ingestion',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -83,6 +90,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiIngestionJobIdEventsRoute = ApiIngestionJobIdEventsRouteImport.update({
+  id: '/api/ingestion/$jobId/events',
+  path: '/api/ingestion/$jobId/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiDocumentsDocumentIdFileRoute =
   ApiDocumentsDocumentIdFileRouteImport.update({
     id: '/api/documents/$documentId/file',
@@ -94,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/profile': typeof ProfileRouteRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
+  '/ingestion': typeof IngestionRoute
   '/network': typeof NetworkRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
@@ -104,10 +117,12 @@ export interface FileRoutesByFullPath {
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/api/upload/$': typeof ApiUploadSplatRoute
   '/api/documents/$documentId/file': typeof ApiDocumentsDocumentIdFileRoute
+  '/api/ingestion/$jobId/events': typeof ApiIngestionJobIdEventsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
+  '/ingestion': typeof IngestionRoute
   '/network': typeof NetworkRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
@@ -118,12 +133,14 @@ export interface FileRoutesByTo {
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/api/upload/$': typeof ApiUploadSplatRoute
   '/api/documents/$documentId/file': typeof ApiDocumentsDocumentIdFileRoute
+  '/api/ingestion/$jobId/events': typeof ApiIngestionJobIdEventsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/profile': typeof ProfileRouteRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
+  '/ingestion': typeof IngestionRoute
   '/network': typeof NetworkRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
@@ -134,6 +151,7 @@ export interface FileRoutesById {
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/api/upload/$': typeof ApiUploadSplatRoute
   '/api/documents/$documentId/file': typeof ApiDocumentsDocumentIdFileRoute
+  '/api/ingestion/$jobId/events': typeof ApiIngestionJobIdEventsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,6 +159,7 @@ export interface FileRouteTypes {
     | '/'
     | '/profile'
     | '/auth'
+    | '/ingestion'
     | '/network'
     | '/auth/login'
     | '/auth/signup'
@@ -151,10 +170,12 @@ export interface FileRouteTypes {
     | '/api/trpc/$'
     | '/api/upload/$'
     | '/api/documents/$documentId/file'
+    | '/api/ingestion/$jobId/events'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
+    | '/ingestion'
     | '/network'
     | '/auth/login'
     | '/auth/signup'
@@ -165,11 +186,13 @@ export interface FileRouteTypes {
     | '/api/trpc/$'
     | '/api/upload/$'
     | '/api/documents/$documentId/file'
+    | '/api/ingestion/$jobId/events'
   id:
     | '__root__'
     | '/'
     | '/profile'
     | '/auth'
+    | '/ingestion'
     | '/network'
     | '/auth/login'
     | '/auth/signup'
@@ -180,12 +203,14 @@ export interface FileRouteTypes {
     | '/api/trpc/$'
     | '/api/upload/$'
     | '/api/documents/$documentId/file'
+    | '/api/ingestion/$jobId/events'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ProfileRouteRoute: typeof ProfileRouteRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
+  IngestionRoute: typeof IngestionRoute
   NetworkRoute: typeof NetworkRoute
   CasesCaseIdRoute: typeof CasesCaseIdRoute
   EntitiesEntityNameRoute: typeof EntitiesEntityNameRoute
@@ -193,6 +218,7 @@ export interface RootRouteChildren {
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
   ApiUploadSplatRoute: typeof ApiUploadSplatRoute
   ApiDocumentsDocumentIdFileRoute: typeof ApiDocumentsDocumentIdFileRoute
+  ApiIngestionJobIdEventsRoute: typeof ApiIngestionJobIdEventsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -202,6 +228,13 @@ declare module '@tanstack/react-router' {
       path: '/network'
       fullPath: '/network'
       preLoaderRoute: typeof NetworkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ingestion': {
+      id: '/ingestion'
+      path: '/ingestion'
+      fullPath: '/ingestion'
+      preLoaderRoute: typeof IngestionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -281,6 +314,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/ingestion/$jobId/events': {
+      id: '/api/ingestion/$jobId/events'
+      path: '/api/ingestion/$jobId/events'
+      fullPath: '/api/ingestion/$jobId/events'
+      preLoaderRoute: typeof ApiIngestionJobIdEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/documents/$documentId/file': {
       id: '/api/documents/$documentId/file'
       path: '/api/documents/$documentId/file'
@@ -319,6 +359,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ProfileRouteRoute: ProfileRouteRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
+  IngestionRoute: IngestionRoute,
   NetworkRoute: NetworkRoute,
   CasesCaseIdRoute: CasesCaseIdRoute,
   EntitiesEntityNameRoute: EntitiesEntityNameRoute,
@@ -326,6 +367,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
   ApiUploadSplatRoute: ApiUploadSplatRoute,
   ApiDocumentsDocumentIdFileRoute: ApiDocumentsDocumentIdFileRoute,
+  ApiIngestionJobIdEventsRoute: ApiIngestionJobIdEventsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
