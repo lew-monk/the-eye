@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Button, StatusChip, StatusDot } from "@workspace/ui";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { AppShell } from "#/components/app-shell";
+import { CasePicker } from "#/components/case-picker";
 import { IsoNetworkScene } from "#/components/iso-network";
 import { filterCoreGraph } from "#/components/graph-relevance";
 import { useTRPC } from "#/integrations/trpc/react";
@@ -139,20 +140,19 @@ function NetworkPage() {
 	const [burstIds, setBurstIds] = useState<string[]>([]);
 	const [viewMode, setViewMode] = useState<"board" | "list">("board");
 
-	const { data: cases = [] } = useQuery({
+	const { data: cases = [], isLoading: casesLoading } = useQuery({
 		...trpc.cases.list.queryOptions(),
 		staleTime: 30_000,
 	});
 
-	const activeFocus = parseFocus(search.focus, search.caseId ?? cases[0]?.id);
+	// No fallback to cases[0]: without an explicit ?caseId= / ?focus= we show
+	// the picker and fire zero network queries (per-case compute only).
+	const activeFocus = parseFocus(search.focus, search.caseId);
 
-	useEffect(() => {
-		if (search.focus || search.caseId || !cases[0]) return;
-		void navigate({
-			search: { caseId: cases[0].id, focus: `case:${cases[0].id}` },
-			replace: true,
-		});
-	}, [search.focus, search.caseId, cases, navigate]);
+	const unknownCase =
+		search.caseId != null &&
+		!casesLoading &&
+		!cases.some((c) => c.id === search.caseId);
 
 	const { data: network, isLoading } = useQuery({
 		...trpc.cases.getFocusNetwork.queryOptions({
@@ -285,11 +285,38 @@ function NetworkPage() {
 		goToFocus({ type: "case", id: String(id), caseId: id }, false);
 	};
 
+	const backToCases = () => {
+		setTrail([]);
+		setWorking({ nodes: [], edges: [] });
+		setSelectedId(null);
+		setBurst(false);
+		setBurstIds([]);
+		void navigate({ search: {} });
+	};
+
+	if (!activeFocus || unknownCase) {
+		return (
+			<AppShell>
+				<div className="h-[calc(100vh-5rem)] flex flex-col min-h-0">
+					<CasePicker
+						cases={cases}
+						isLoading={casesLoading}
+						notice={unknownCase ? "CASE_NOT_FOUND" : null}
+						onSelect={selectCase}
+					/>
+				</div>
+			</AppShell>
+		);
+	}
+
 	return (
 		<AppShell>
 			<div className="h-[calc(100vh-5rem)] flex flex-col min-h-0">
 				<header className="shrink-0 min-h-11 border-b border-outline-variant/30 px-4 py-1.5 flex items-center gap-4 overflow-x-auto">
 					<div className="flex items-center gap-2 min-w-0">
+						<Button variant="ghost" size="sm" brackets={false} className="text-meta shrink-0" onClick={backToCases}>
+							← ALL_CASES
+						</Button>
 						{trail.length > 0 && (
 							<Button variant="ghost" size="sm" brackets={false} className="text-meta shrink-0" onClick={comeBack}>
 								← OUT
@@ -379,19 +406,6 @@ function NetworkPage() {
 									active={selectedId === n.id}
 									onClick={() => setSelectedId(n.id)}
 									onDoubleClick={() => goInside(n)}
-								/>
-							))}
-						</Section>
-
-						<Section title="ALL CASES" count={cases.length}>
-							{cases.map((c) => (
-								<LegendRow
-									key={c.id}
-									letter="C"
-									label={c.caseNumber}
-									meta={c.title}
-									active={activeFocus?.type === "case" && activeFocus.id === String(c.id)}
-									onClick={() => selectCase(c.id)}
 								/>
 							))}
 						</Section>
@@ -566,7 +580,7 @@ function NetworkBoard({
 	activeFocus: FocusInput | null;
 	isLoading: boolean;
 	network: CaseNetworkData | null | undefined;
-	viewMode: "iso" | "list";
+	viewMode: "board" | "list";
 	graph: { nodes: CaseNetworkNode[]; edges: CaseNetworkEdge[]; hidden: number };
 	fullGraph: { nodes: CaseNetworkNode[]; edges: CaseNetworkEdge[] };
 	selectedId: string | null;
