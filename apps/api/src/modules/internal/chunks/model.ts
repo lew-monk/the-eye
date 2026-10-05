@@ -11,6 +11,8 @@ export const ChunkModel = {
 			tokenCount: t.Optional(t.Number()),
 			positionWeight: t.Optional(t.Number()),
 			parentChunkIndex: t.Optional(t.Nullable(t.Number())),
+			section: t.Optional(t.String()),
+			chunkUid: t.Optional(t.String()),
 			ocrConfidence: t.Optional(t.Number()),
 		}),
 		),

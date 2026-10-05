@@ -1,11 +1,26 @@
 # PRD: PDF pipeline remainder (pdf-pipeline.md items 1–5)
 
 ## Status
-Slice E (spike) DONE — report: `docs/paralegal/spike-extract-20.md`.
-Headline: 20/20 docs, 1138 pages, 5% OCR-page ratio, est. −95% Azure cost
-($1.71 → $0.09), pipe tables + 806 ATX headings intact in native output.
-Recommendation: proceed A → B → C; defer D (in-Python `ocr_function`).
-Plan only for slices A–D — no extract code changed yet.
+Slices A–C built on branch `feat/pdf-pipeline-remainder` (spike E done earlier).
+- **A (rich extract):** `pdf_extract.py` emits per-page `markdown`, `headings[]`
+  (md/HTML wrappers stripped), `tables[]` (single MD block), `pictures[]`
+  with bboxes, `boxes[]`. Contract keys (`pageIndex/text/needsOcr`) unchanged.
+  `tests/test_pdf_extract.py` (9 tests, pymupdf-generated fixtures).
+- **B (persist):** `NativePage`/`HybridPageRecord` carry the rich signals into
+  `structuredData.pages` (`hybrid-merge.ts`); `fullContent.content` untouched
+  for existing consumers. Passthrough + legacy-shape tests.
+- **C (heading chunks):** migration `0016` (`section`, `chunk_uid` + unique
+  index); `paralegal.chunk_text(..., section_headings, document_id)` splits on
+  ordered heading matches, atomic table chunks, 15% in-section overlap
+  (never across sections/tables), `chunk_uid=sha256(doc|section|hash|v1)`;
+  legacy path byte-identical when no headings. `ChunkIngest` + store
+  passthrough; `getExtractedText` exposes `sectionHeadings`; worker threads
+  them through. Proven on VSC 643: 35 headings → 36 sections, 78 chunks.
+- **Validation:** mixed-doc dump confirms thresholds (scanned exhibits →
+  Azure, redacted blanks → empty, filing stamps → native); re-run spike shows
+  identical routing ( extracting ~2x slower from find_tables/bboxes, still
+  background-fine).
+- **Deferred (D):** in-Python Azure `ocr_function` — unjustified at 5% OCR ratio.
 
 ## Evaluation: what is done vs pending
 

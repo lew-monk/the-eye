@@ -1,7 +1,31 @@
+export interface PageHeading {
+	level: number
+	text: string
+}
+
+export interface PageBox {
+	kind: 'heading' | 'table' | 'picture'
+	bbox?: [number, number, number, number]
+	level?: number
+	text?: string
+}
+
+export interface PagePicture {
+	bbox: [number, number, number, number]
+	width?: number | null
+	height?: number | null
+}
+
 export interface NativePage {
 	pageIndex: number
 	text: string
 	needsOcr: boolean
+	// Rich extract signals from pdf_extract.py (absent on older payloads).
+	markdown?: string
+	headings?: PageHeading[]
+	tables?: string[]
+	pictures?: PagePicture[]
+	boxes?: PageBox[]
 }
 
 export interface OcrPageResult {
@@ -13,6 +37,21 @@ export interface HybridPageRecord {
 	pageIndex: number
 	source: 'native' | 'azure-ocr'
 	text: string
+	markdown?: string
+	headings?: PageHeading[]
+	tables?: string[]
+	pictures?: PagePicture[]
+	boxes?: PageBox[]
+}
+
+function richSignals(p: NativePage): Partial<HybridPageRecord> {
+	return {
+		...(p.markdown !== undefined ? { markdown: p.markdown } : {}),
+		...(p.headings !== undefined ? { headings: p.headings } : {}),
+		...(p.tables !== undefined ? { tables: p.tables } : {}),
+		...(p.pictures !== undefined ? { pictures: p.pictures } : {}),
+		...(p.boxes !== undefined ? { boxes: p.boxes } : {}),
+	}
 }
 
 export function mergeHybridPages(
@@ -26,12 +65,14 @@ export function mergeHybridPages(
 				pageIndex: p.pageIndex,
 				source: 'azure-ocr' as const,
 				text: (ocr?.content ?? p.text ?? '').trim(),
+				...richSignals(p),
 			}
 		}
 		return {
 			pageIndex: p.pageIndex,
 			source: 'native' as const,
 			text: (p.text ?? '').trim(),
+			...richSignals(p),
 		}
 	})
 

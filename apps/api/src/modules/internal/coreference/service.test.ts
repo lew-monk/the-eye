@@ -100,6 +100,36 @@ describe('CoreferenceService.getExtractedText', () => {
 
 		expect(result!.text).toBe('')
 	})
+
+	it('flattens section headings from structuredData pages', async () => {
+		mockDocFindById.mockResolvedValue({
+			id: 4, fullContent: { content: 'Hi' }, documentType: 'judgment',
+			status: 'completed', textHash: 'h', fileHash: 'f',
+			structuredData: {
+				extractor: 'pymupdf4llm-hybrid',
+				pages: [
+					{ pageIndex: 0, headings: [{ level: 1, text: 'Holding' }] },
+					{ pageIndex: 1, headings: [] },
+					{ pageIndex: 2 },
+				],
+			},
+		})
+
+		const result = await CoreferenceService.getExtractedText(4)
+
+		expect(result!.sectionHeadings).toEqual(['Holding'])
+	})
+
+	it('returns empty sectionHeadings without structuredData', async () => {
+		mockDocFindById.mockResolvedValue({
+			id: 5, fullContent: { content: 'Hi' }, documentType: 'judgment',
+			status: 'completed', textHash: 'h', fileHash: 'f',
+		})
+
+		const result = await CoreferenceService.getExtractedText(5)
+
+		expect(result!.sectionHeadings).toEqual([])
+	})
 })
 
 describe('CoreferenceService.storeCoreference', () => {

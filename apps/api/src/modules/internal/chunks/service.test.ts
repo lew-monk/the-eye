@@ -93,6 +93,21 @@ describe('ChunksService.store', () => {
 		expect(mockAddDocumentChunkToQueue).toHaveBeenCalledWith(DOC_ID)
 	})
 
+	it('passes section and chunkUid through to the repository', async () => {
+		mockDocFindById.mockResolvedValue({ id: DOC_ID, status: 'processing' })
+		mockChunkCreateMany.mockResolvedValue([{ id: 1 }])
+
+		await ChunksService.store(
+			DOC_ID,
+			[{ chunkIndex: 0, text: 'holding body', section: 'Holding', chunkUid: 'abc123' }],
+			0, 'none', 'none',
+		)
+
+		const rows = mockChunkCreateMany.mock.calls[0]?.[0]
+		expect(rows[0].section).toBe('Holding')
+		expect(rows[0].chunkUid).toBe('abc123')
+	})
+
 	it('stores normalizedText when provided', async () => {
 		mockDocFindById.mockResolvedValue({ id: DOC_ID, status: 'processing' })
 		mockChunkCreateMany.mockResolvedValue([{ id: 1 }])

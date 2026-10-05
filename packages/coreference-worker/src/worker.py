@@ -329,12 +329,17 @@ async def process_job(job, job_token) -> Optional[Dict[str, Any]]:
         normalized_text = normalize_text(resolved_text, participants, mentions)
         _doc_log(document_id, "coref_normalized", chars=len(normalized_text))
 
+        section_headings = meta.get("sectionHeadings")
+        if section_headings is not None and not isinstance(section_headings, list):
+            section_headings = None
         paralegal_chunks = paralegal_chunk(
             normalized_text,
             PARALEGAL_CHUNK_MAX_TOKENS,
             weights=WEIGHTS,
             document_type=document_type,
             parent_max_tokens=PARENT_CHUNK_MAX_TOKENS,
+            section_headings=section_headings,
+            document_id=document_id,
         )
         token_counts = [c.get("tokenCount", 0) for c in paralegal_chunks]
         child_count = sum(1 for c in paralegal_chunks if "parentChunkIndex" in c)

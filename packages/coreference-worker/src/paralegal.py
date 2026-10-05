@@ -69,8 +69,12 @@ def _parse_weight_key(key: str) -> tuple[int, bool]:
 
 
 def _resolve_weight(
-    weights: Dict[str, float], chunk_index: int
+    weights: Dict[str, float], chunk_index: int, section: Optional[str] = None
 ) -> float:
+    if section:
+        section_key = f"section_{_normalize_section(section)}"
+        if section_key in weights:
+            return weights[section_key]
     exact_key = f"chunk_{chunk_index}"
     if exact_key in weights:
         return weights[exact_key]
@@ -355,6 +359,8 @@ def _chunk_row(
     text: str,
     position_weight: float,
     parent_chunk_index: Optional[int] = None,
+    section: Optional[str] = None,
+    chunk_uid: Optional[str] = None,
 ) -> Dict[str, Any]:
     row: Dict[str, Any] = {
         "chunkIndex": chunk_index,
@@ -365,7 +371,118 @@ def _chunk_row(
     }
     if parent_chunk_index is not None:
         row["parentChunkIndex"] = parent_chunk_index
+    if section is not None:
+        row["section"] = section
+    if chunk_uid is not None:
+        row["chunkUid"] = chunk_uid
     return row
+
+
+OVERLAP_RATIO: float = 0.15
+CHUNKER_VERSION: int = 1
+
+
+def _normalize_section(name: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "_", (name or "").strip().lower()).strip("_")
+    return slug[:80]
+
+
+def _normalize_heading_line(line: str) -> str:
+    text = re.sub(r"^#{1,6}\s+", "", line.strip()).strip()
+    text = re.sub(r"<[^>]+>", "", text)
+    text = text.replace("*", "").replace("_", "")
+    return re.sub(r"\s+", " ", text).strip().casefold()
+
+
+def _split_sections(
+    text: str, section_headings: Optional[List[str]]
+) -> List[tuple[str, str]]:
+    """Split text on heading matches. Returns [(section_label, body)].
+
+    Headings match in order, first occurrence at/after the cursor, compared
+    whitespace- and case-insensitively with markdown `#` prefixes tolerated on
+    either side. Unmatched headings are ignored; text before the first match
+    becomes the ("", preamble) section. Empty input yields [].
+    """
+    if not text or not text.strip():
+        return []
+    if not section_headings:
+        return [("", text)]
+    wanted = [(h, _normalize_heading_line(h)) for h in section_headings]
+    wanted = [(h, n) for h, n in wanted if n]
+    if not wanted:
+        return [("", text)]
+
+    lines = text.splitlines(keepends=True)
+    norm_lines = [_normalize_heading_line(l) for l in lines]
+    boundaries: list[tuple[int, str]] = []
+    cursor = 0
+    for original, norm in wanted:
+        found = -1
+        for i in range(cursor, len(lines)):
+            if norm_lines[i] == norm:
+                found = i
+                break
+        if found == -1:
+            continue
+        boundaries.append((found, original.strip()))
+        cursor = found + 1
+
+    if not boundaries:
+        return [("", text)]
+    sections: list[tuple[str, str]] = []
+    first_line, _ = boundaries[0]
+    if first_line > 0:
+        sections.append(("", "".join(lines[:first_line])))
+    for idx, (line_no, label) in enumerate(boundaries):
+        end = boundaries[idx + 1][0] if idx + 1 < len(boundaries) else len(lines)
+        sections.append((label, "".join(lines[line_no:end])))
+    return [(label, body) for label, body in sections if body.strip()]
+
+
+def _is_table_line(line: str) -> bool:
+    return line.strip().startswith("|")
+
+
+def _split_tables(paragraphs: List[str]) -> List[tuple[str, str]]:
+    """Group paragraphs into ("table"|"prose", text). A table is a run of
+    pipe-leading lines; it must stay atomic (one chunk, never overlapped)."""
+    groups: list[tuple[str, str]] = []
+    current: List[str] = []
+    current_kind = "prose"
+    for para in paragraphs:
+        stripped = para.strip()
+        if not stripped:
+            continue
+        lines = [ln for ln in stripped.splitlines() if ln.strip()]
+        kind = "table" if lines and all(_is_table_line(ln) for ln in lines) else "prose"
+        if kind == current_kind:
+            current.append(stripped)
+        else:
+            if current:
+                groups.append((current_kind, "\n\n".join(current)))
+            current = [stripped]
+            current_kind = kind
+    if current:
+        groups.append((current_kind, "\n\n".join(current)))
+    return groups
+
+
+def _overlap_tail(text: str, max_tokens: int) -> str:
+    if max_tokens <= 0 or not text.strip():
+        return ""
+    ids = _get_encoding().encode(text)  # type: ignore[union-attr]
+    tail = ids[-max_tokens:]
+    return _get_encoding().decode(tail)  # type: ignore[union-attr]
+
+
+def _chunk_uid(
+    document_id: Optional[int], section: str, text_hash: str, chunker_version: int
+) -> Optional[str]:
+    if document_id is None:
+        return None
+    payload = f"{document_id}|{_normalize_section(section)}|{text_hash}|{chunker_version}"
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def _paragraph_chunk(text: str, max_tokens: int) -> List[str]:
@@ -406,6 +523,9 @@ def chunk_text(
     weights: Optional[Dict[str, Any]] = None,
     document_type: Optional[str] = None,
     parent_max_tokens: Optional[int] = None,
+    section_headings: Optional[List[str]] = None,
+    document_id: Optional[int] = None,
+    chunker_version: int = CHUNKER_VERSION,
 ) -> List[Dict[str, Any]]:
     if not text or not text.strip():
         return [_chunk_row(0, "", 1.0)]
@@ -414,6 +534,7 @@ def chunk_text(
     parent_cap = retrieval_max
     if parent_max_tokens is not None:
         parent_cap = max(retrieval_max, int(parent_max_tokens * HEADROOM_FACTOR))
+    overlap_tokens = max(0, int(retrieval_max * OVERLAP_RATIO))
 
     type_weights: Dict[str, float] = {}
     if weights:
@@ -423,25 +544,74 @@ def chunk_text(
         else:
             type_weights = weights.get("default", {})
 
-    parent_windows = _paragraph_chunk(text, parent_cap)
-    chunks: List[Dict[str, Any]] = []
+    sections = _split_sections(text, section_headings)
+    if not sections:
+        return [_chunk_row(0, "", 1.0)]
+
+    # Legacy path (no headings): byte-identical behavior to before —
+    # paragraph windows, positional weights, no overlap, no section labels.
+    if section_headings is None:
+        chunks: List[Dict[str, Any]] = []
+        chunk_index = 0
+        for section_index, parent_text in enumerate(_paragraph_chunk(text, parent_cap)):
+            children = _paragraph_chunk(parent_text, retrieval_max)
+            weight = _resolve_weight(type_weights, section_index)
+            if len(children) <= 1:
+                leaf = children[0] if children else parent_text
+                chunks.append(_chunk_row(chunk_index, leaf, weight))
+                chunk_index += 1
+                continue
+            parent_index = chunk_index
+            chunks.append(_chunk_row(parent_index, parent_text, weight))
+            chunk_index += 1
+            for child in children:
+                chunks.append(_chunk_row(chunk_index, child, weight, parent_index))
+                chunk_index += 1
+        return chunks
+
+    chunks = []
     chunk_index = 0
 
-    for section_index, parent_text in enumerate(parent_windows):
-        children = _paragraph_chunk(parent_text, retrieval_max)
-        weight = _resolve_weight(type_weights, section_index)
+    def emit(index: int, body: str, weight: float, section: str,
+             parent: Optional[int] = None) -> Dict[str, Any]:
+        text_hash = hashlib.sha256(body.encode("utf-8")).hexdigest()
+        uid = _chunk_uid(document_id, section, text_hash, chunker_version)
+        return _chunk_row(index, body, weight, parent, section, uid)
 
-        if len(children) <= 1:
-            leaf = children[0] if children else parent_text
-            chunks.append(_chunk_row(chunk_index, leaf, weight))
-            chunk_index += 1
-            continue
-
-        parent_index = chunk_index
-        chunks.append(_chunk_row(parent_index, parent_text, weight))
-        chunk_index += 1
-        for child in children:
-            chunks.append(_chunk_row(chunk_index, child, weight, parent_index))
-            chunk_index += 1
+    for section_label, section_body in sections:
+        groups = _split_tables(re.split(r"\n\n+", section_body))
+        section_position = 0
+        for kind, group_text in groups:
+            if kind == "table":
+                # Atomic: one chunk, never split, never overlapped in/out.
+                weight = _resolve_weight(type_weights, section_position, section_label)
+                chunks.append(emit(chunk_index, group_text, weight, section_label))
+                chunk_index += 1
+                section_position += 1
+                continue
+            parent_windows = _paragraph_chunk(group_text, parent_cap)
+            for parent_text in parent_windows:
+                children = _paragraph_chunk(parent_text, retrieval_max)
+                weight = _resolve_weight(type_weights, section_position, section_label)
+                if len(children) <= 1:
+                    leaf = children[0] if children else parent_text
+                    chunks.append(emit(chunk_index, leaf, weight, section_label))
+                    chunk_index += 1
+                    section_position += 1
+                    continue
+                parent_index = chunk_index
+                chunks.append(emit(parent_index, parent_text, weight, section_label))
+                chunk_index += 1
+                previous_child: Optional[str] = None
+                for child in children:
+                    body = child
+                    if previous_child is not None and overlap_tokens > 0:
+                        tail = _overlap_tail(previous_child, overlap_tokens)
+                        if tail:
+                            body = f"{tail}\n{child}"
+                    chunks.append(emit(chunk_index, body, weight, section_label, parent_index))
+                    chunk_index += 1
+                    section_position += 1
+                    previous_child = child
 
     return chunks

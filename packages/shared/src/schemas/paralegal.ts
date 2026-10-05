@@ -58,6 +58,8 @@ export const documentChunks = pgTable('document_chunks', {
 	tokenCount: integer('token_count'),
 	positionWeight: real('position_weight'),
 	parentChunkIndex: integer('parent_chunk_index'),
+	section: text('section'),
+	chunkUid: text('chunk_uid'),
 	ocrConfidence: real('ocr_confidence'),
 	createdAt: timestamp('created_at').defaultNow().notNull(),
 	updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -65,6 +67,7 @@ export const documentChunks = pgTable('document_chunks', {
 	docChunkIdx: uniqueIndex('idx_chunks_document_chunk').on(table.documentId, table.chunkIndex),
 	documentIdx: index('idx_chunks_document_id').on(table.documentId),
 	embeddingModelIdx: index('idx_chunks_embedding_model').on(table.embeddingModel),
+	chunkUidIdx: uniqueIndex('idx_chunks_chunk_uid').on(table.chunkUid),
 }))
 
 // Types

@@ -29,6 +29,19 @@ export abstract class CoreferenceService {
 				? jsonObjectContent(fullContent)
 				: ''
 
+		const structured = document.structuredData as {
+			pages?: { headings?: { text?: string }[] }[]
+		} | null
+		const sectionHeadings = Array.isArray(structured?.pages)
+			? structured.pages.flatMap((p) =>
+					Array.isArray(p?.headings)
+						? p.headings
+								.map((h) => (typeof h?.text === 'string' ? h.text : ''))
+								.filter(Boolean)
+						: [],
+				)
+			: []
+
 		return {
 			documentId: document.id,
 			text,
@@ -38,6 +51,7 @@ export abstract class CoreferenceService {
 			coreferenceSourceTextHash: stored?.sourceTextHash ?? null,
 			existingCoref,
 			status: document.status,
+			sectionHeadings,
 		}
 	}
 

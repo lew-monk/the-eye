@@ -34,6 +34,19 @@ all pages, hybrid = `needsOcr` pages only.
   chunking (slice C) exists today.
 - **Azure $/doc**: ~$0.085/doc azure-only vs ~$0.004/doc hybrid at this mix.
 
+## Validation (post-build, 2026-10-06)
+- Per-page dump of the 3 mixed docs: VSC 643's 2 OCR pages are image-only
+  exhibit scans (correctly Azure-routed); Amended Defence is 46/47 scanned
+  pages (correct); COR Form 38's 9 empty native pages are redacted blanks
+  (vector redactions, correctly empty — nothing lost).
+- Re-ran the 20-doc spike after the extract changes: identical routing
+  decisions (57/1138 OCR pages, same costs). Native extract ~2x slower from
+  `find_tables` + image bboxes — acceptable for background ingest.
+- End-to-end on VSC 643: 35 extract headings → 36 sections → 78 chunks, clean
+  labels (`Fairness inter se`), unique `chunk_uid`s. Fixed two real bugs found
+  here: heading labels kept `**`/`<u>` wrappers (now stripped both sides so
+  extract labels match resolved-text lines), and `table.bbox` is a tuple.
+
 ## Recommendation
 - The hybrid routing works: 5% OCR ratio, −95% cost, tables and headings
   intact in native output. Proceed with slice A (rich extract: boxes, heading

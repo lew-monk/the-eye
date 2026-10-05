@@ -24,4 +24,40 @@ describe('mergeHybridPages', () => {
 		expect(merged.confidence).toBe(1)
 		expect(merged.pages).toHaveLength(1)
 	})
+
+	it('carries rich extract signals through both page sources', () => {
+		const rich = {
+			markdown: '# Holding\nbody',
+			headings: [{ level: 1, text: 'Holding' }],
+			tables: ['| a |\n| --- |\n| b |'],
+			pictures: [{ bbox: [0, 0, 10, 10] as [number, number, number, number] }],
+			boxes: [{ kind: 'table' as const, bbox: [0, 0, 10, 10] as [number, number, number, number] }],
+		}
+		const merged = mergeHybridPages(
+			[
+				{ pageIndex: 0, text: 'digital', needsOcr: false, ...rich },
+				{ pageIndex: 1, text: '', needsOcr: true, ...rich },
+			],
+			{ 1: { content: 'scanned', confidence: 0.9 } },
+		)
+		for (const page of merged.pages) {
+			expect(page.headings).toEqual([{ level: 1, text: 'Holding' }])
+			expect(page.tables).toHaveLength(1)
+			expect(page.pictures).toHaveLength(1)
+			expect(page.boxes).toHaveLength(1)
+			expect(page.markdown).toBe('# Holding\nbody')
+		}
+	})
+
+	it('omits rich keys when the native payload predates them', () => {
+		const merged = mergeHybridPages(
+			[{ pageIndex: 0, text: 'legacy', needsOcr: false }],
+			{},
+		)
+		expect(merged.pages[0]).toEqual({
+			pageIndex: 0,
+			source: 'native',
+			text: 'legacy',
+		})
+	})
 })
